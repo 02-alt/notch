@@ -3,11 +3,12 @@ import AppKit
 /// Lightweight update check. Point `feedURL` at a GitHub "latest release" API
 /// endpoint to enable real checks; until then it reports that you're up to date.
 enum Updater {
-    /// e.g. URL(string: "https://api.github.com/repos/OWNER/REPO/releases/latest")
-    static let feedURL: URL? = nil
+    /// GitHub "latest release" API — used to compare the newest published tag
+    /// against the running version.
+    static let feedURL: URL? = URL(string: "https://api.github.com/repos/02-alt/notch/releases/latest")
 
     /// Where "View Release" sends the user when an update is found.
-    static let releasesPage = URL(string: "https://github.com")
+    static let releasesPage = URL(string: "https://github.com/02-alt/notch/releases/latest")
 
     static var currentVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"

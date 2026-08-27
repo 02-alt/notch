@@ -182,8 +182,8 @@ final class SettingsStore: ObservableObject {
     private init() {
         launchAtLogin = defaults.bool(forKey: "set.launchAtLogin")
         accentHex = defaults.string(forKey: "set.accentHex") ?? "4C84FA"
-        // Analogue-Noir is the app's default look; the others are opt-in in Settings.
-        panelTheme = PanelTheme(rawValue: defaults.string(forKey: "set.panelTheme") ?? "") ?? .noir
+        // Liquid Glass is the app's default look; the others are opt-in in Settings.
+        panelTheme = PanelTheme(rawValue: defaults.string(forKey: "set.panelTheme") ?? "") ?? .glass
         mediaPriority = MediaSource(rawValue: defaults.string(forKey: "set.mediaPriority") ?? "") ?? .spotify
         if let raw = defaults.array(forKey: "set.enabledSources") as? [String] {
             enabledSources = Set(raw.compactMap { MediaSource(rawValue: $0) })

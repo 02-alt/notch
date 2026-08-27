@@ -42,11 +42,9 @@ struct CollapsedMediaView: View {
         recorder.isRecording || vm.collapsedEvent != nil || vm.transferActive || timer.isActive || mediaVisible || restingReady
     }
 
-    /// Whether the resting stat (`settings.collapsedResting`) should surface. It's
-    /// the lowest-priority peek — media, events, transfers and timers all outrank it
-    /// — and a live-source stat only shows once it actually has a reading.
-    private var restingReady: Bool {
-        guard !recorder.isRecording, vm.collapsedEvent == nil, !vm.transferActive, !timer.isActive, !mediaVisible else { return false }
+    /// Whether the chosen resting stat has a value to show yet (a live-source stat
+    /// only reads once its background poll lands).
+    private var restingHasData: Bool {
         switch settings.collapsedResting {
         case .none:    return false
         case .clock:   return true
@@ -54,6 +52,19 @@ struct CollapsedMediaView: View {
         case .battery: return battery.charge != nil
         }
     }
+
+    /// Whether the resting stat surfaces *on its own* (an idle pill). Media, events,
+    /// transfers and timers all outrank it — but when media is playing the stat
+    /// rides alongside it instead of hiding (see `mediaCompanion`).
+    private var restingReady: Bool {
+        guard !recorder.isRecording, vm.collapsedEvent == nil, !vm.transferActive, !timer.isActive, !mediaVisible else { return false }
+        return restingHasData
+    }
+
+    /// When media is playing, the resting stat (if set + ready) takes the right edge
+    /// in place of the EQ, so you see *both* the track and your fuel/battery at once
+    /// — rather than the stat being suppressed for the whole song.
+    private var mediaCompanion: Bool { mediaVisible && restingHasData }
 
     /// The left-edge glyph for the resting stat — a category marker mirroring the
     /// media peek's album art. Battery swaps to a bolt while charging.
@@ -71,12 +82,19 @@ struct CollapsedMediaView: View {
             if recorder.isRecording {
                 recordingPeek
             } else if let event = vm.collapsedEvent {
-                // A transient notice (e.g. "Fuel refilled"): tinted glyph on the
-                // left, a matching pulse on the right, camera cutout kept clear.
+                // A transient notice (e.g. "Tokens refilled"): the notch briefly
+                // widens (see RootView.eventPeekSize) into a small banner — a tinted
+                // glyph and the label on the left, a matching pulse on the right.
                 Image(systemName: event.symbol)
                     .font(.system(size: art * 0.58, weight: .semibold))
                     .foregroundStyle(eventTint(event))
                     .frame(width: art, height: art)
+                Text(event.text)
+                    .font(.system(size: art * 0.44, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.leading, 7)
                 Spacer(minLength: hInset)
                 PulseDot(color: eventTint(event), diameter: art * 0.5)
             } else if vm.transferActive {
@@ -91,7 +109,13 @@ struct CollapsedMediaView: View {
             } else if mediaVisible {
                 artwork
                 Spacer(minLength: hInset)
-                SimpleEQ(animating: np.isPlaying, height: art * 0.78)
+                if mediaCompanion {
+                    // Both at once: the track's art on the left, your fuel/battery
+                    // gauge on the right where the EQ would be.
+                    restingValue.frame(height: art)
+                } else {
+                    SimpleEQ(animating: np.isPlaying, height: art * 0.78)
+                }
             } else if restingReady {
                 restingPeek
             }

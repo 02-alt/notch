@@ -52,7 +52,9 @@ enum Metrics {
         // Each setting now floats in its own padded card (rather than packed into
         // one pane), so the categories breathe taller than the old dividered layout.
         switch category {
-        case .general:    return 340
+        // General's left column now carries the Fuel "Update rate" group beneath the
+        // three base rows, so it needs the extra height to show it without clipping.
+        case .general:    return 460
         case .appearance: return 330
         // Media lost the collapsed-notch group to its own tab, so it's lighter now;
         // Notch carries the fuel-event card with its three-line caption, so it stays tall.
@@ -131,10 +133,20 @@ enum Metrics {
         max(panelWidth, moodExpandedWidth)
     }
 
-    /// Body height for a given panel mode. Settings sizes to the visible category;
-    /// the Fuel dashboard grows taller; every other tab uses the standard `openHeight`.
+    /// Body height for the What's New card, sized to the number of change rows so
+    /// the whole release list shows without scrolling — the panel grows to fit it
+    /// and stays welded to the notch, exactly like a Settings category.
+    static func whatsNewHeight(changeCount: Int) -> CGFloat {
+        let h = 150 + CGFloat(max(1, changeCount)) * 88
+        return min(500, max(220, h))
+    }
+
+    /// Body height for a given panel mode. What's New and Settings size to their
+    /// content; the Fuel dashboard grows taller; every other tab uses `openHeight`.
     static func bodyHeight(for tab: NotchTab, showingSettings: Bool,
+                           showingWhatsNew: Bool = false, whatsNewChanges: Int = 0,
                            settingsCategory: SettingsCategory) -> CGFloat {
+        if showingWhatsNew { return whatsNewHeight(changeCount: whatsNewChanges) }
         if showingSettings { return settingsHeight(for: settingsCategory) }
         if tab == .fuel { return fuelHeight }
         if tab == .clock { return clockHeight }

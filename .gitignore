@@ -1,5 +1,6 @@
 .build/
 .DS_Store
 NotchGlass.app/
+*.dmg
 *.xcodeproj
 .swiftpm/

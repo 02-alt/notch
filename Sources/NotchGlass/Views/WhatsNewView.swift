@@ -1,50 +1,29 @@
 import SwiftUI
 
-/// The in-notch "What's New" card. Presented over the panel content the first time
-/// it's opened after an update (and manually from Settings): a headline, the release
-/// summary, a scrollable list of what changed, and a button to dismiss.
-///
-/// Pinned to a dark appearance and floated on a translucent card so it reads the same
-/// on every panel theme — a small modal that pops rather than blending in.
+/// The in-notch "What's New" release notes. Rendered as the panel's own content
+/// (like Settings) — welded into the notch, with the body grown to fit the whole
+/// list — rather than a floating card. Shown on the first panel open after an
+/// update (and manually from Settings): a headline, the release summary, the list
+/// of what changed, and a button to dismiss.
 struct WhatsNewView: View {
     let releases: [ReleaseNote]
     let onDismiss: () -> Void
 
     @EnvironmentObject private var settings: SettingsStore
-    @State private var appeared = false
 
     private var accent: Color { settings.accent }
 
-    /// The newest release drives the version badge / summary at the top; every
-    /// release's changes are listed below (usually just the one).
+    /// The newest release drives the version badge / summary; every release's
+    /// changes are listed below (usually just the one).
     private var headline: ReleaseNote? { releases.first }
 
     var body: some View {
-        ZStack {
-            // Dim, frosted backdrop — click anywhere outside the card to dismiss.
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .overlay(Color.black.opacity(0.4))
-                .contentShape(Rectangle())
-                .onTapGesture { onDismiss() }
-
-            card
-                .scaleEffect(appeared ? 1 : 0.92)
-                .opacity(appeared ? 1 : 0)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-        }
-        .environment(\.colorScheme, .dark)
-        .onExitCommand { onDismiss() }
-        .onAppear {
-            withAnimation(.spring(response: 0.36, dampingFraction: 0.82)) { appeared = true }
-        }
-    }
-
-    private var card: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             header
 
+            // Sized to fit by the panel body, so this normally shows every row
+            // without scrolling; the ScrollView is only a safety net for an
+            // unusually long release.
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 10) {
                     ForEach(releases) { release in
@@ -53,7 +32,7 @@ struct WhatsNewView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 2)
+                .padding(.horizontal, 1)
             }
 
             Button(action: onDismiss) {
@@ -61,24 +40,18 @@ struct WhatsNewView: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(accent.readableForeground)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 11)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .background(Capsule(style: .continuous).fill(accent))
             .linkCursor()
         }
-        .padding(18)
-        .frame(maxWidth: 380)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(white: 0.10))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
-        }
-        .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // White-on-dark card, matched to the dark panel surface (a dark stage is
+        // added under it on the Light theme by the caller).
+        .environment(\.colorScheme, .dark)
+        .onExitCommand { onDismiss() }
     }
 
     private var header: some View {
@@ -86,25 +59,25 @@ struct WhatsNewView: View {
             HStack {
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(accent)
                     Text("What's New")
-                        .font(.system(size: 15, weight: .heavy))
+                        .font(.system(size: 17, weight: .heavy))
                         .foregroundStyle(.white)
                 }
                 Spacer()
                 if let v = headline?.version {
                     Text("Version \(v)")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.85))
-                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(.horizontal, 9).padding(.vertical, 4)
                         .background(Capsule().fill(accent.opacity(0.25)))
                         .overlay(Capsule().strokeBorder(accent.opacity(0.5), lineWidth: 1))
                 }
             }
             if let summary = headline?.summary {
                 Text(summary)
-                    .font(.system(size: 11.5, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.white.opacity(0.65))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -116,22 +89,25 @@ struct WhatsNewView: View {
             Image(systemName: change.symbol)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(accent)
-                .frame(width: 34, height: 34)
+                .frame(width: 36, height: 36)
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(accent.opacity(0.16)))
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(change.title)
-                    .font(.system(size: 12.5, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.white)
                 Text(change.detail)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.62))
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
-        .padding(10)
+        .padding(11)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
             .fill(Color.white.opacity(0.05)))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(Color.white.opacity(0.07), lineWidth: 1))
     }
 }

@@ -35,7 +35,7 @@ enum WhatsNew {
     static let releases: [ReleaseNote] = [
         ReleaseNote(
             version: "1.1",
-            summary: "Clearer numbers, nicer photos, faster fuel.",
+            summary: "Clearer numbers, nicer photos, and a livelier notch.",
             changes: [
                 ReleaseChange(
                     symbol: "fuelpump.fill",
@@ -50,7 +50,17 @@ enum WhatsNew {
                 ReleaseChange(
                     symbol: "bolt.fill",
                     title: "Faster Fuel refresh",
-                    detail: "Choose a refresh rate in Settings, and rate-limits now clear in seconds instead of minutes."
+                    detail: "Pick a refresh rate in Settings, and rate-limits now clear in seconds instead of minutes."
+                ),
+                ReleaseChange(
+                    symbol: "bell.badge.fill",
+                    title: "Notch alerts",
+                    detail: "The closed notch briefly opens to tell you when tokens refill or run low, you hit the weekly limit, or you start using credits."
+                ),
+                ReleaseChange(
+                    symbol: "gauge.with.dots.needle.bottom.50percent",
+                    title: "Fuel while you listen",
+                    detail: "Your fuel or battery now rides alongside the now-playing peek in the closed notch, instead of hiding while music plays."
                 ),
             ]
         ),
@@ -81,6 +91,12 @@ enum WhatsNew {
     static var notesToShow: [ReleaseNote] {
         let unseen = unseenNotes
         return unseen.isEmpty ? Array(releases.prefix(1)) : unseen
+    }
+
+    /// Total number of change rows the card will render — drives the panel height so
+    /// it's tall enough to show them all.
+    static var visibleChangeCount: Int {
+        notesToShow.reduce(0) { $0 + $1.changes.count }
     }
 
     /// Record that the user has caught up to the current version.

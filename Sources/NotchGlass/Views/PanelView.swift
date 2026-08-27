@@ -29,12 +29,25 @@ struct PanelView: View {
     }
 
     private var bodyHeight: CGFloat {
-        isMoodBig ? Metrics.moodExpandedHeight : Metrics.bodyHeight(for: vm.selectedTab, showingSettings: vm.showSettings, settingsCategory: vm.settingsCategory)
+        isMoodBig ? Metrics.moodExpandedHeight : Metrics.bodyHeight(for: vm.selectedTab, showingSettings: vm.showSettings, showingWhatsNew: vm.showWhatsNew, whatsNewChanges: WhatsNew.visibleChangeCount, settingsCategory: vm.settingsCategory)
     }
 
     var body: some View {
         Group {
-            if vm.showSettings {
+            if vm.showWhatsNew {
+                // Rendered as the panel's own content (not a floating overlay) so it
+                // welds into the notch and the body grows to fit the whole list.
+                WhatsNewView(releases: WhatsNew.notesToShow) { vm.dismissWhatsNew() }
+                    // On the Light theme, sit on a dark stage like the other dark-native
+                    // panes so its white-on-dark card stays legible.
+                    .background {
+                        if Theme.isLight {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(LinearGradient(colors: [Color(white: 0.14), Color(white: 0.10)],
+                                                     startPoint: .top, endPoint: .bottom))
+                        }
+                    }
+            } else if vm.showSettings {
                 NotchSettingsView()
             } else {
                 VStack(spacing: 12) {
@@ -101,13 +114,6 @@ struct PanelView: View {
                 DragDestinationChip(tab: vm.selectedTab, accent: settings.accent)
                     .transition(.scale(scale: 0.9).combined(with: .opacity))
                     .allowsHitTesting(false)
-            }
-        }
-        // The release-notes card, over everything, on first open after an update.
-        .overlay {
-            if vm.showWhatsNew {
-                WhatsNewView(releases: WhatsNew.notesToShow) { vm.dismissWhatsNew() }
-                    .transition(.opacity)
             }
         }
         .animation(Metrics.openSpring, value: vm.dragActive)

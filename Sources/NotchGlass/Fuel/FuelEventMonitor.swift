@@ -20,19 +20,24 @@ final class FuelEventMonitor: ObservableObject {
     /// gauge (`CollapsedResting.fuel`) so a live "% left" can show while closed.
     @Published private(set) var sessionUsed: Double?
 
-    /// The last session utilization we saw (0…1), to detect the drop on refill and
-    /// the climb into the "low" zone.
+    /// The last readings we saw, to detect the transitions that fire events: the
+    /// session drop on refill / climb into "low", the weekly window maxing out or
+    /// resetting, and the first dollar of extra-usage credits being spent.
     private var lastSessionUsed: Double?
+    private var lastWeekUsed: Double?
+    private var lastCreditsUsed: Double?
     private var timer: Timer?
 
     /// How often to poll while enabled. Refills are not time-critical, so keep this
     /// gentle to stay off the network / keychain most of the time.
     private let interval: TimeInterval = 120
 
-    // Thresholds: a refill is a big drop back toward empty; "low" is crossing 90%.
+    // Thresholds: a refill is a big drop back toward empty; "low" is crossing 90%;
+    // a window is "maxed" once it's essentially at 100%.
     private let refillWasAbove = 0.40
     private let refillNowBelow = 0.15
     private let lowThreshold = 0.90
+    private let maxedThreshold = 0.995
 
     func start() {
         guard timer == nil else { return }
@@ -46,6 +51,8 @@ final class FuelEventMonitor: ObservableObject {
         timer?.invalidate()
         timer = nil
         lastSessionUsed = nil
+        lastWeekUsed = nil
+        lastCreditsUsed = nil
     }
 
     private func poll() {
@@ -56,17 +63,53 @@ final class FuelEventMonitor: ObservableObject {
     }
 
     private func handle(_ result: LiveFetchResult) {
-        guard case .ok(let usage) = result, let session = usage.session else { return }
+        guard case .ok(let usage) = result else { return }
+        handleSession(usage.session)
+        handleWeek(usage.week)
+        handleCredits(usage.credits)
+    }
+
+    /// Session (5-hour) window: fires "refilled" on the reset drop and "running low"
+    /// as it nears empty. Also feeds the collapsed pill's resting fuel gauge.
+    private func handleSession(_ session: LiveWindow?) {
+        guard let session else { return }
         let current = min(1, max(0, session.utilization / 100))
         sessionUsed = current
         defer { lastSessionUsed = current }
-
         guard let last = lastSessionUsed else { return } // first sample: just seed
 
         if last >= refillWasAbove && current <= refillNowBelow {
-            onEvent?(.init(symbol: "fuelpump.fill", text: "Fuel refilled", tintHex: "34C759"))
+            onEvent?(.init(symbol: "fuelpump.fill", text: "Tokens refilled", tintHex: "34C759"))
         } else if last < lowThreshold && current >= lowThreshold {
-            onEvent?(.init(symbol: "exclamationmark.triangle.fill", text: "Fuel running low", tintHex: "FF9F0A"))
+            onEvent?(.init(symbol: "exclamationmark.triangle.fill", text: "Tokens running low", tintHex: "FF9F0A"))
+        }
+    }
+
+    /// Weekly window: fires when it maxes out (the weekly limit is reached) and when
+    /// it rolls over and resets back down.
+    private func handleWeek(_ week: LiveWindow?) {
+        guard let week else { return }
+        let current = min(1, max(0, week.utilization / 100))
+        defer { lastWeekUsed = current }
+        guard let last = lastWeekUsed else { return }
+
+        if last < maxedThreshold && current >= maxedThreshold {
+            onEvent?(.init(symbol: "calendar.badge.exclamationmark", text: "Weekly limit reached", tintHex: "FF453A"))
+        } else if last >= refillWasAbove && current <= refillNowBelow {
+            onEvent?(.init(symbol: "calendar", text: "Weekly limit reset", tintHex: "34C759"))
+        }
+    }
+
+    /// Extra-usage credits: fires once, when the first credit is spent — i.e. you've
+    /// gone past the included limits and are now paying for overage.
+    private func handleCredits(_ credits: LiveCredits?) {
+        guard let credits, credits.everEnabled else { return }
+        let used = credits.used
+        defer { lastCreditsUsed = used }
+        guard let last = lastCreditsUsed else { return }
+
+        if last <= 0 && used > 0 {
+            onEvent?(.init(symbol: "creditcard.fill", text: "Now using credits", tintHex: "0A84FF"))
         }
     }
 }

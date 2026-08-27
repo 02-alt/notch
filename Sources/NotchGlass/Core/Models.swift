@@ -220,11 +220,11 @@ enum FuelRefreshRate: String, CaseIterable, Identifiable {
 }
 
 /// The surface treatment for the whole notch panel, switchable in Settings.
-/// `.noir` (the default) is the deep black-glass card; `.glass` frosts the entire
-/// expanded panel as translucent Liquid Glass so the desktop shows through it.
+/// `.glass` (the default) frosts the entire expanded panel as translucent Liquid
+/// Glass so the desktop shows through it; `.noir` is the deep black-glass card.
 enum PanelTheme: String, CaseIterable, Identifiable {
-    // Noir leads: it's the default look, so it's the first tile in the picker.
-    case noir, glass, light
+    // Glass leads: it's the default look, so it's the first tile in the picker.
+    case glass, noir, light
 
     var id: String { rawValue }
 

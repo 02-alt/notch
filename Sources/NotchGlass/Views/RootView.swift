@@ -35,11 +35,20 @@ struct RootView: View {
     /// The animated size of the notch body: the collapsed pill, the panel, the
     /// taller Settings panel, or the expanded Mood board.
     private var bodySize: CGSize {
-        guard vm.isOpen else { return vm.collapsedSize }
+        guard vm.isOpen else { return collapsedBodySize }
         if isMoodBig {
             return CGSize(width: Metrics.moodExpandedWidth, height: Metrics.moodExpandedHeight)
         }
-        return CGSize(width: openWidth, height: Metrics.bodyHeight(for: vm.selectedTab, showingSettings: vm.showSettings, settingsCategory: vm.settingsCategory))
+        return CGSize(width: openWidth, height: Metrics.bodyHeight(for: vm.selectedTab, showingSettings: vm.showSettings, showingWhatsNew: vm.showWhatsNew, whatsNewChanges: WhatsNew.visibleChangeCount, settingsCategory: vm.settingsCategory))
+    }
+
+    /// The collapsed pill's size — the bare notch normally, but while a fuel event is
+    /// flashing the pill widens and drops a touch into a small banner, so the notch
+    /// visibly *opens a little* to deliver the message before settling back.
+    private var collapsedBodySize: CGSize {
+        guard !vm.isOpen, vm.collapsedEvent != nil else { return vm.collapsedSize }
+        let base = vm.collapsedSize
+        return CGSize(width: max(base.width + 168, 320), height: base.height + 12)
     }
 
     /// Bottom corner radius grows with the body so the pill's tight curve opens
@@ -58,17 +67,13 @@ struct RootView: View {
 
     /// The notch body outline.
     ///
-    /// The **collapsed pill always welds** (flat full-width top) so it reads as a
-    /// notch on every display, notch or not — that's the app's signature.
-    ///
-    /// The **expanded panel only welds on a real notch**. Welding gives a flat
-    /// full-width top; on a display *without* a notch the wide panel floats below
-    /// the screen edge, so that full-width top juts out past the (slightly inset)
-    /// body as black bars on the sides. There we float a plain rounded card instead
-    /// — no bars — while a real notch still hangs the panel from the top.
+    /// **Always welds** — a flat full-width top that hangs from the screen's top
+    /// edge — so both the collapsed pill and the expanded panel read as a notch on
+    /// every display, notch or not. That's the app's signature ("All in a notch"),
+    /// and it's what users expect even on a display without a physical notch, so we
+    /// no longer fall back to a plain rounded card there.
     private var bodyShape: NotchShape {
-        let weld = vm.isOpen ? vm.hasNotch : true
-        return NotchShape(topRadius: topRadius, bottomRadius: bottomRadius, weld: weld)
+        NotchShape(topRadius: topRadius, bottomRadius: bottomRadius, weld: true)
     }
 
     /// Hit-test shape for the hover trigger — the full body when open, a narrower
@@ -142,7 +147,7 @@ struct RootView: View {
             // Now-playing peek shown while collapsed: art + a live EQ hugging the
             // notch edges. Fades out as the panel opens and never steals the hover.
             .overlay {
-                CollapsedMediaView(size: vm.collapsedSize)
+                CollapsedMediaView(size: collapsedBodySize)
                     .opacity(vm.isOpen ? 0 : 1)
                     .allowsHitTesting(false)
             }
@@ -204,8 +209,11 @@ struct RootView: View {
         // One animation drives the whole morph — frame, corner radius, surface,
         // stroke, shadow and the content reveal all move together.
         .animation(vm.isOpen ? Metrics.openSpring : Metrics.closeSpring, value: vm.isOpen)
+        // The little "notch opens" bump when a fuel event flashes in, and back.
+        .animation(Metrics.openSpring, value: vm.collapsedEvent)
         .animation(Metrics.openSpring, value: settings.panelTheme)
         .animation(Metrics.openSpring, value: vm.showSettings)
+        .animation(Metrics.openSpring, value: vm.showWhatsNew)
         // Each Settings category has its own height — animate the resize on switch.
         .animation(Metrics.openSpring, value: vm.settingsCategory)
         // The Fuel tab is taller than the rest, so switching to/from it morphs the

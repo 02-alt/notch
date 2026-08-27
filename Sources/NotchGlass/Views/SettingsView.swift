@@ -226,7 +226,7 @@ struct NotchSettingsView: View {
                 NotchToggle(isOn: $settings.collapsedShowsMedia, accent: settings.accent)
             }
             SettingRow("Fuel events",
-                       caption: "Flash a notice in the notch when your Claude fuel refills or runs low. Checks your usage periodically in the background.") {
+                       caption: "The notch briefly opens with a notice when your tokens refill or run low, you hit the weekly limit, or you start using credits. Checks your usage periodically in the background.") {
                 NotchToggle(isOn: $settings.collapsedShowsFuelEvents, accent: settings.accent)
             }
         }
