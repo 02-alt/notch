@@ -4,3 +4,4 @@ NotchGlass.app/
 *.dmg
 *.xcodeproj
 .swiftpm/
+*.zip

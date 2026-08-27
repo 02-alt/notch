@@ -32,18 +32,18 @@ struct CalendarTabView: View {
     // MARK: - Agenda
 
     private var agenda: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.base) {
             header
             if manager.days.isEmpty {
                 emptyState
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: Spacing.lg) {
                         ForEach(manager.days, id: \.date) { day in
                             daySection(day.date, events: day.events)
                         }
                     }
-                    .padding(.bottom, 4)
+                    .padding(.bottom, Spacing.xs)
                 }
             }
         }
@@ -53,14 +53,14 @@ struct CalendarTabView: View {
     /// Calendar.app for anything the compact agenda doesn't cover.
     private var header: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .center, spacing: Spacing.base) {
+                VStack(alignment: .leading, spacing: Spacing.hair) {
                     Text(manager.nextEvent(after: context.date) == nil ? "SCHEDULE" : "UP NEXT")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(Theme.secondaryText)
                         .kerning(0.6)
                     if let next = manager.nextEvent(after: context.date) {
-                        HStack(spacing: 7) {
+                        HStack(spacing: Spacing.sm) {
                             Circle()
                                 .fill(color(for: next))
                                 .frame(width: 8, height: 8)
@@ -92,7 +92,7 @@ struct CalendarTabView: View {
     }
 
     private func daySection(_ date: Date, events: [EKEvent]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: Spacing.s) {
             Text(Self.dayHeading(date))
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(Theme.tertiaryText)
@@ -105,7 +105,7 @@ struct CalendarTabView: View {
 
     private func eventRow(_ event: EKEvent) -> some View {
         Button { Self.open(event) } label: {
-            HStack(alignment: .top, spacing: 10) {
+            HStack(alignment: .top, spacing: Spacing.md) {
                 Text(Self.timeText(event))
                     .font(.system(size: 11, weight: .semibold).monospacedDigit())
                     .foregroundStyle(Theme.secondaryText)
@@ -114,7 +114,7 @@ struct CalendarTabView: View {
                     .fill(color(for: event))
                     .frame(width: 3)
                     .frame(maxHeight: .infinity)
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: Spacing.hair) {
                     Text(event.title ?? "Event")
                         .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
@@ -127,8 +127,8 @@ struct CalendarTabView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
             .frame(maxWidth: .infinity)
             .fixedSize(horizontal: false, vertical: true)
             .innerCard(cornerRadius: 10)
@@ -139,7 +139,7 @@ struct CalendarTabView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Spacing.sm) {
             Image(systemName: "calendar")
                 .font(.system(size: 26, weight: .light))
                 .foregroundStyle(Theme.tertiaryText)
@@ -172,7 +172,7 @@ struct CalendarTabView: View {
 
     private func permissionCard(icon: String, title: String, message: String,
                                 button: String, action: @escaping () -> Void) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             Image(systemName: icon)
                 .font(.system(size: 30, weight: .light))
                 .foregroundStyle(settings.accent)
@@ -187,13 +187,13 @@ struct CalendarTabView: View {
                 Text(button)
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(settings.accent.readableForeground)
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, Spacing.lg)
                     .frame(height: 32)
                     .background { Capsule().fill(settings.accent) }
             }
             .buttonStyle(.plain)
             .notchHover(scale: 1.05)
-            .padding(.top, 2)
+            .padding(.top, Spacing.hair)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

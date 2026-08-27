@@ -50,7 +50,7 @@ struct PanelView: View {
             } else if vm.showSettings {
                 NotchSettingsView()
             } else {
-                VStack(spacing: 12) {
+                VStack(spacing: Spacing.base) {
                     // Kept above the tab body in the hit-test order: Mood board tiles
                     // are positioned freely and a tile near the top overflows upward
                     // past the (visually clipped) board, so without this its invisible
@@ -98,9 +98,9 @@ struct PanelView: View {
         }
         // Generous insets so nothing hugs the welded top edge or the sides.
         // A little extra up top to clear the flared corners.
-        .padding(.horizontal, 24)
-        .padding(.top, 22)
-        .padding(.bottom, 20)
+        .padding(.horizontal, Spacing.xl)
+        .padding(.top, Spacing.xl)
+        .padding(.bottom, Spacing.xl)
         // Top-aligned: the panel welds to the screen's top edge, so content hangs
         // from the top. If a tab's content ever exceeds the body height it spills
         // downward (off the bottom) rather than centering and shoving the tab bar
@@ -175,7 +175,7 @@ private struct TopBar: View {
         // Always a single row so the bar never eats vertical height. When
         // categorized the row holds the category pills, and the picked category
         // expands its tabs inline to its right (see `tabStrip`).
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.sm) {
             tabStrip
             Spacer()
             gearButton
@@ -200,8 +200,8 @@ private struct TopBar: View {
     /// picked category expands its tabs inline to its right — so it never grows to
     /// a second row and the panel stays short.
     private var tabStrip: some View {
-        GlassEffectContainer(spacing: 6) {
-            HStack(spacing: 6) {
+        GlassEffectContainer(spacing: Spacing.s) {
+            HStack(spacing: Spacing.s) {
                 if isCategorized {
                     ForEach(presentCategories) { cat in
                         categoryPill(cat)
@@ -209,11 +209,11 @@ private struct TopBar: View {
                         // pill, nested in a recessed tray so they read as that
                         // category's contents — not more top-level chips.
                         if cat == selectedCategory {
-                            HStack(spacing: 6) {
+                            HStack(spacing: Spacing.s) {
                                 ForEach(visibleTabs) { tab in tabButton(for: tab, compact: true) }
                             }
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, Spacing.s)
+                            .padding(.vertical, Spacing.xs)
                             .background(Capsule(style: .continuous).fill(Color.white.opacity(0.08)))
                             .transition(.scale(scale: 0.85).combined(with: .opacity))
                         }
@@ -310,7 +310,7 @@ private struct TopBar: View {
             // Always icon + label + a disclosure chevron, so a category always reads
             // as a labelled, expandable header — visually unlike the bare icon tabs
             // in its tray. The chevron points right when closed, down when open.
-            HStack(spacing: 5) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: cat.symbol)
                     .font(.system(size: 11, weight: .semibold))
                 Text(cat.title)
@@ -323,7 +323,7 @@ private struct TopBar: View {
             }
             .foregroundStyle(selected ? .white : Theme.secondaryText)
             .frame(height: 28)
-            .padding(.horizontal, 11)
+            .padding(.horizontal, Spacing.base)
             .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
@@ -495,10 +495,10 @@ private struct DragDestinationChip: View {
     private var acceptsDrop: Bool { tab == .drop || tab == .mood }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Spacing.md) {
             Image(systemName: tab.symbol)
                 .font(.system(size: 16, weight: .semibold))
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: Spacing.hair) {
                 Text(acceptsDrop ? "Drop into" : "Switch to")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.7))
@@ -509,8 +509,8 @@ private struct DragDestinationChip: View {
         // Always white — the chip floats on its own dark capsule, independent of
         // the panel theme.
         .foregroundStyle(.white)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Spacing.lg)
+        .padding(.vertical, Spacing.base)
         .background { Capsule(style: .continuous).fill(Color.black.opacity(0.55)) }
         .overlay { Capsule(style: .continuous).strokeBorder(accent.opacity(0.85), lineWidth: 1.5) }
         .shadow(color: accent.opacity(0.5), radius: 16)
@@ -540,7 +540,7 @@ private struct TabButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 5) {
+            HStack(spacing: Spacing.s) {
                 // While spring-loading, the icon becomes a dotted "thinking orb"
                 // to signal the tab is charging; the ring overlay still carries
                 // the 0→1 countdown.

@@ -19,7 +19,7 @@ struct NotchSettingsView: View {
     private let unit: CGFloat = 8
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Spacing.lg) {
             header
             categorySelector
             categoryContent
@@ -40,7 +40,7 @@ struct NotchSettingsView: View {
     /// fade/slide keeps the swap from snapping as the panel resizes to the new
     /// category's height.
     @ViewBuilder private var categoryContent: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .top, spacing: Spacing.lg) {
             switch vm.settingsCategory {
             case .general:
                 column { generalGroup; fuelGroup }
@@ -62,7 +62,7 @@ struct NotchSettingsView: View {
 
     /// One equal-width, top-aligned settings column.
     private func column<C: View>(@ViewBuilder _ content: () -> C) -> some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Spacing.lg) {
             content()
             Spacer(minLength: 0)
         }
@@ -115,7 +115,7 @@ struct NotchSettingsView: View {
                 }
             }
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: settings.fuelRefreshRate.symbol)
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
@@ -126,8 +126,8 @@ struct NotchSettingsView: View {
                     .foregroundStyle(Theme.secondaryText)
             }
             .font(.system(size: 12, weight: .medium))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.s)
             .contentShape(Capsule())
         }
         .menuStyle(.borderlessButton)
@@ -152,7 +152,7 @@ struct NotchSettingsView: View {
                 .buttonStyle(.plain)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(settings.accent)
-                .padding(.horizontal, 10).padding(.vertical, 5)
+                .padding(.horizontal, Spacing.md).padding(.vertical, Spacing.s)
                 .blackGlass(in: Capsule(), interactive: true)
                 .linkCursor()
             }
@@ -229,6 +229,10 @@ struct NotchSettingsView: View {
                        caption: "The notch briefly opens with a notice when your tokens refill or run low, you hit the weekly limit, or you start using credits. Checks your usage periodically in the background.") {
                 NotchToggle(isOn: $settings.collapsedShowsFuelEvents, accent: settings.accent)
             }
+            SettingRow("Dynamic Island",
+                       caption: "The closed notch expands on its own when something happens — a new track, a finished timer, an incoming AirDrop — showing it for a moment, then settling back. iPhone-style.") {
+                NotchToggle(isOn: $settings.dynamicIsland, accent: settings.accent)
+            }
         }
     }
 
@@ -238,7 +242,7 @@ struct NotchSettingsView: View {
         switch settings.collapsedResting {
         case .none:    return "What the closed notch shows when nothing’s playing."
         case .clock:   return "Shows the time on the closed notch when nothing’s playing."
-        case .fuel:    return "Shows your Claude fuel left on the closed notch. Checks your usage periodically in the background."
+        case .fuel:    return "A fuel gauge on the closed notch that cycles the refill countdown, % left, credits and the weekly reset — like a menu-bar meter. Checks your usage periodically in the background."
         case .battery: return "Shows this Mac’s battery on the closed notch when nothing’s playing."
         }
     }
@@ -255,7 +259,7 @@ struct NotchSettingsView: View {
                 }
             }
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: settings.collapsedResting.symbol)
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
@@ -266,8 +270,8 @@ struct NotchSettingsView: View {
                     .foregroundStyle(Theme.secondaryText)
             }
             .font(.system(size: 12, weight: .medium))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.s)
             .contentShape(Capsule())
         }
         .menuStyle(.borderlessButton)
@@ -283,12 +287,12 @@ struct NotchSettingsView: View {
     /// pill bar. Switching a pill swaps the visible groups and springs the panel to
     /// that category's height, so the user never faces one giant scroll of settings.
     private var categorySelector: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.xs) {
             ForEach(SettingsCategory.allCases) { category in
                 categoryPill(category)
             }
         }
-        .padding(3)
+        .padding(Spacing.xs)
         .background(Capsule(style: .continuous).fill(Theme.line(0.07)))
         .overlay(Capsule(style: .continuous).strokeBorder(Theme.cardStroke, lineWidth: 1))
     }
@@ -298,7 +302,7 @@ struct NotchSettingsView: View {
         return Button {
             withAnimation(Metrics.openSpring) { vm.settingsCategory = category }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: category.symbol)
                     .font(.system(size: 11, weight: .semibold))
                 Text(category.title)
@@ -306,7 +310,7 @@ struct NotchSettingsView: View {
             }
             .foregroundStyle(selected ? settings.accent.readableForeground : Theme.secondaryText)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
+            .padding(.vertical, Spacing.s)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -321,7 +325,7 @@ struct NotchSettingsView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Spacing.md) {
             Button {
                 withAnimation(Metrics.openSpring) { vm.showSettings = false }
             } label: {
@@ -355,12 +359,12 @@ struct NotchSettingsView: View {
     /// the reference sheet's calm "PATH" / "FONT STYLE" headers.
     private func settingsGroup<C: View>(_ title: String,
                                         @ViewBuilder _ content: () -> C) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Text(title.uppercased())
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(Theme.tertiaryText)
                 .kerning(0.8)
-                .padding(.leading, 4)
+                .padding(.leading, Spacing.xs)
 
             VStack(spacing: unit) { content() }
         }
@@ -380,8 +384,8 @@ struct NotchSettingsView: View {
     /// second line inside the same card.
     private func SettingRow<Control: View>(_ title: String, caption captionText: String? = nil,
                                            @ViewBuilder control: () -> Control) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            HStack(spacing: Spacing.md) {
                 Text(title)
                     .font(.system(size: 12, weight: .medium))
                 Spacer(minLength: 8)
@@ -398,7 +402,7 @@ struct NotchSettingsView: View {
     /// carded, so it sits on the same grid as the single-line rows.
     private func SettingColumn<Control: View>(_ title: String, caption captionText: String? = nil,
                                               @ViewBuilder control: () -> Control) -> some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
             Text(title)
                 .font(.system(size: 12, weight: .medium))
             control()
@@ -411,8 +415,8 @@ struct NotchSettingsView: View {
     private func sliderRow(_ title: String, value: Binding<Double>,
                            range: ClosedRange<Double>, step: Double = 0.01,
                            label: String, caption captionText: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            HStack(spacing: Spacing.md) {
                 Text(title)
                     .font(.system(size: 12, weight: .medium))
                 NotchSlider(value: value, range: range, step: step, accent: settings.accent)
@@ -441,13 +445,13 @@ struct NotchSettingsView: View {
     /// never trigger a macOS Automation prompt.
     private var sourcesPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
                 ForEach(installedSources, id: \.self) { src in
                     let on = settings.isSourceEnabled(src)
                     Button {
                         settings.setSource(src, enabled: !on)
                     } label: {
-                        HStack(spacing: 5) {
+                        HStack(spacing: Spacing.s) {
                             if let icon = src.appIcon {
                                 Image(nsImage: icon).resizable().frame(width: 14, height: 14)
                             }
@@ -455,8 +459,8 @@ struct NotchSettingsView: View {
                                 .font(.system(size: 11, weight: .semibold))
                         }
                         .foregroundStyle(on ? settings.accent.readableForeground : Theme.secondaryText)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.s)
                         .background {
                             Capsule(style: .continuous)
                                 .fill(on ? settings.accent : Theme.line(0.08))
@@ -471,7 +475,7 @@ struct NotchSettingsView: View {
                     .notchHover(scale: 1.04)
                 }
             }
-            .padding(.horizontal, 1)
+            .padding(.horizontal, Spacing.hair)
         }
     }
 
@@ -486,7 +490,7 @@ struct NotchSettingsView: View {
                 Button(tab.title) { settings.defaultTab = tab }
             }
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: Spacing.s) {
                 Text(settings.defaultTab.title)
                     .foregroundStyle(Theme.primaryText)
                 Image(systemName: "chevron.up.chevron.down")
@@ -494,8 +498,8 @@ struct NotchSettingsView: View {
                     .foregroundStyle(Theme.secondaryText)
             }
             .font(.system(size: 12, weight: .medium))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.s)
             .contentShape(Capsule())
         }
         .menuStyle(.borderlessButton)
@@ -513,7 +517,7 @@ struct NotchSettingsView: View {
     /// opaque Solid card and the see-through Liquid Glass surface is visible at a
     /// glance. Replaces the old text-only pop-up menu.
     private var themeSwatches: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Spacing.md) {
             ForEach(PanelTheme.allCases) { theme in
                 themeTile(theme)
             }
@@ -538,13 +542,13 @@ struct NotchSettingsView: View {
                 settings.panelTheme = theme
             }
         } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 ThemePreview(theme: theme, accent: previewAccent(for: theme))
                     .frame(height: 52)
                     .frame(maxWidth: .infinity)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-                HStack(spacing: 6) {
+                HStack(spacing: Spacing.s) {
                     Image(systemName: theme.symbol)
                         .font(.system(size: 10, weight: .semibold))
                     Text(theme.title)
@@ -556,7 +560,7 @@ struct NotchSettingsView: View {
                 }
                 .foregroundStyle(selected ? Theme.primaryText : Theme.secondaryText)
             }
-            .padding(8)
+            .padding(Spacing.sm)
             .background(
                 RoundedRectangle(cornerRadius: 15, style: .continuous)
                     .fill(Theme.line(selected ? 0.07 : 0.03))
@@ -580,11 +584,11 @@ struct NotchSettingsView: View {
     /// text on a light track that's unreadable on this dark panel. The selected
     /// segment uses the accent with a luminance-matched text color for contrast.
     private var segmented: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.xs) {
             segment("Spotify", .spotify)
             segment("Apple Music", .music)
         }
-        .padding(3)
+        .padding(Spacing.xs)
         .background(
             Capsule(style: .continuous).fill(Theme.line(0.07))
         )
@@ -602,7 +606,7 @@ struct NotchSettingsView: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(selected ? settings.accent.readableForeground : Theme.secondaryText)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 5)
+                .padding(.vertical, Spacing.s)
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -651,7 +655,7 @@ struct NotchSettingsView: View {
     ]
 
     private var accentSwatches: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: Spacing.md) {
             ForEach(Self.accentChoices, id: \.self) { hex in
                 let selected = settings.accentHex.uppercased() == hex
                 Circle()
@@ -688,8 +692,8 @@ private extension View {
     func settingsCard() -> some View {
         let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
         return self
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, Spacing.base)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(shape.fill(Theme.cardFill))
             .overlay(shape.strokeBorder(Theme.cardStroke, lineWidth: 1))
@@ -719,7 +723,7 @@ private struct NotchToggle: View {
                     .fill(.white)
                     .frame(width: knob, height: knob)
                     .shadow(color: .black.opacity(0.35), radius: 1.5, y: 0.5)
-                    .padding(3)
+                    .padding(Spacing.xs)
             }
             .contentShape(Capsule())
         }
@@ -804,8 +808,8 @@ private struct ThemePreview: View {
             )
 
             miniPanel
-                .padding(.horizontal, 12)
-                .padding(.top, 9)
+                .padding(.horizontal, Spacing.base)
+                .padding(.top, Spacing.md)
         }
     }
 
@@ -816,8 +820,8 @@ private struct ThemePreview: View {
         // The mock content is white on the dark themes, dark on the Light theme —
         // so each tile previews its own foreground contrast, not just its surface.
         let bar = theme == .light ? Color.black : Color.white
-        return VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 4) {
+        return VStack(alignment: .leading, spacing: Spacing.s) {
+            HStack(spacing: Spacing.xs) {
                 Capsule().fill(accent).frame(width: 16, height: 5)
                 Capsule().fill(bar.opacity(0.28)).frame(width: 10, height: 5)
                 Capsule().fill(bar.opacity(0.28)).frame(width: 10, height: 5)
@@ -826,7 +830,7 @@ private struct ThemePreview: View {
             RoundedRectangle(cornerRadius: 2).fill(bar.opacity(0.16))
                 .frame(width: 42, height: 6)
         }
-        .padding(8)
+        .padding(Spacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             switch theme {
@@ -869,7 +873,7 @@ private struct ThemePreview: View {
                         .blur(radius: 1.4)
                         .opacity(0.4)
                         .blendMode(.plusLighter)
-                        .padding(.top, 4)
+                        .padding(.top, Spacing.xs)
                     }
             case .light:
                 shape.fill(

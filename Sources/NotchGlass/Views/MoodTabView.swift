@@ -138,7 +138,7 @@ struct MoodTabView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Spacing.sm) {
             Image(systemName: "square.grid.2x2")
                 .font(.system(size: 22, weight: .medium))
             Text("Drop links, files or notes here")
@@ -149,8 +149,8 @@ struct MoodTabView: View {
     }
 
     private var leadingToolbar: some View {
-        GlassEffectContainer(spacing: 8) {
-            HStack(spacing: 8) {
+        GlassEffectContainer(spacing: Spacing.sm) {
+            HStack(spacing: Spacing.sm) {
                 addMenu
                 toolButton(symbol: "square.grid.2x2.fill",
                            active: vm.moodMagnetized,
@@ -161,7 +161,7 @@ struct MoodTabView: View {
                 }
             }
         }
-        .padding(12)
+        .padding(Spacing.base)
         .popover(isPresented: $showLinkField, arrowEdge: .top) { linkPopover }
     }
 
@@ -199,7 +199,7 @@ struct MoodTabView: View {
                    help: vm.moodExpanded ? "Shrink" : "Expand the notch") {
             withAnimation(Metrics.openSpring) { vm.moodExpanded.toggle() }
         }
-        .padding(12)
+        .padding(Spacing.base)
     }
 
     private func toolButton(symbol: String, active: Bool, help: String, action: @escaping () -> Void) -> some View {
@@ -215,7 +215,7 @@ struct MoodTabView: View {
     }
 
     private var linkPopover: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.sm) {
             Image(systemName: "link").foregroundStyle(Theme.secondaryText)
             TextField("https://…", text: $linkText)
                 .textFieldStyle(.plain)
@@ -225,7 +225,7 @@ struct MoodTabView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(linkText.trimmingCharacters(in: .whitespaces).isEmpty)
         }
-        .padding(12)
+        .padding(Spacing.base)
     }
 
     // MARK: - Actions
@@ -461,7 +461,7 @@ private struct MoodTile: View {
                     .frame(width: 130, height: 84, alignment: .topLeading)
             }
         }
-        .padding(10)
+        .padding(Spacing.md)
         .background { noteBackground }
         .overlay { noteBorder }
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -482,13 +482,13 @@ private struct MoodTile: View {
             ZStack {
                 shape.fill(Color(white: 0.93))
                 // Faint ruled lines.
-                VStack(spacing: 14) {
+                VStack(spacing: Spacing.lg) {
                     ForEach(0..<5, id: \.self) { _ in
                         Rectangle().fill(Color.black.opacity(0.06)).frame(height: 1)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.top, 26)
+                .padding(.horizontal, Spacing.sm)
+                .padding(.top, Spacing.xl)
             }
         case .glass:
             shape.fill(Color.black.opacity(0.25))
@@ -542,7 +542,7 @@ private struct MoodTile: View {
     }
 
     private var linkTile: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Spacing.s) {
             MoodLinkThumbnail(item: item, size: 96)
             Text(item.title.isEmpty ? item.host : item.title)
                 .font(.system(size: 9, weight: .medium))
@@ -551,7 +551,7 @@ private struct MoodTile: View {
                 .truncationMode(.middle)
                 .frame(width: 96)
         }
-        .padding(8)
+        .padding(Spacing.sm)
         .innerCard(cornerRadius: 12)
         .onTapGesture(perform: onOpen)
         .glassContextMenu {
@@ -568,7 +568,7 @@ private struct MoodTile: View {
     }
 
     private var fileTile: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Spacing.s) {
             MoodFileThumbnail(url: URL(fileURLWithPath: item.content), size: 96)
             Text(item.title)
                 .font(.system(size: 9, weight: .medium))
@@ -577,7 +577,7 @@ private struct MoodTile: View {
                 .truncationMode(.middle)
                 .frame(width: 96)
         }
-        .padding(8)
+        .padding(Spacing.sm)
         .innerCard(cornerRadius: 12)
         .onTapGesture(perform: onOpen)
         .glassContextMenu {
@@ -702,9 +702,9 @@ private struct MoodVideoCard: View {
     private let width: CGFloat = 152
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: Spacing.s) {
             MoodLinkThumbnail(item: item, size: width, aspect: 16.0 / 9.0)
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: Spacing.hair) {
                 Text(title ?? (item.title.isEmpty ? item.host : item.title))
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.white)
@@ -719,7 +719,7 @@ private struct MoodVideoCard: View {
             }
             .frame(width: width, alignment: .leading)
         }
-        .padding(8)
+        .padding(Spacing.sm)
         .innerCard(cornerRadius: 12)
         .task(id: item.content) { await loadMeta() }
     }

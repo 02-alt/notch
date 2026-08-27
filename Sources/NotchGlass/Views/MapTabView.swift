@@ -87,8 +87,8 @@ struct MapTabView: View {
 
     /// Search field + destination readout along the bottom, glass-styled.
     private var controlBar: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 8) {
+        HStack(spacing: Spacing.sm) {
+            HStack(spacing: Spacing.sm) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
@@ -111,8 +111,8 @@ struct MapTabView: View {
                     .notchHover(scale: 1.15)
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, Spacing.base)
+            .padding(.vertical, Spacing.sm)
             .background { Capsule(style: .continuous).fill(Color.black.opacity(0.55)) }
             .blackGlass(in: Capsule(style: .continuous))
 
@@ -121,8 +121,8 @@ struct MapTabView: View {
                     Text("Directions")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(settings.accent.readableForeground)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, Spacing.base)
+                        .padding(.vertical, Spacing.sm)
                         .background { Capsule().fill(settings.accent) }
                         .contentShape(Capsule())
                 }
@@ -130,7 +130,7 @@ struct MapTabView: View {
                 .notchHover(scale: 1.04)
             }
         }
-        .padding(12)
+        .padding(Spacing.base)
     }
 
     private var expandButton: some View {
@@ -146,7 +146,7 @@ struct MapTabView: View {
                 .foregroundStyle(.white)
                 .frame(width: 34, height: 34)
         }
-        .padding(12)
+        .padding(Spacing.base)
     }
 
     // MARK: - Dashboard (expanded)
@@ -166,7 +166,7 @@ struct MapTabView: View {
     // MARK: Trip panel (destination set)
 
     private var tripPanel: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: Spacing.lg) {
             if travelMode == .transit {
                 transitHandoff
             } else if let route {
@@ -183,7 +183,7 @@ struct MapTabView: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.secondaryText)
             } else if routing {
-                VStack(spacing: 8) {
+                VStack(spacing: Spacing.sm) {
                     ThinkingOrb(size: 28)
                     Text("Finding route…")
                         .font(.system(size: 11, weight: .medium))
@@ -201,11 +201,11 @@ struct MapTabView: View {
             placeCard
             Spacer(minLength: 0)
         }
-        .padding(16)
+        .padding(Spacing.lg)
     }
 
     private func stat(title: String, value: String, unit: String) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Spacing.s) {
             Text(title)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Theme.secondaryText)
@@ -223,7 +223,7 @@ struct MapTabView: View {
 
     /// Drive / walk / transit picker; switching recomputes the route.
     private var transportToggle: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s) {
             ForEach(TravelMode.allCases) { mode in
                 let on = travelMode == mode
                 Button { travelMode = mode } label: {
@@ -248,7 +248,7 @@ struct MapTabView: View {
     /// Transit isn't available through MapKit's routing API, so offer a hand-off to
     /// Apple Maps (which does have transit) instead of a dead "no route" message.
     private var transitHandoff: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             Image(systemName: "tram.fill")
                 .font(.system(size: 26, weight: .medium))
                 .foregroundStyle(settings.accent)
@@ -262,8 +262,8 @@ struct MapTabView: View {
                 Text("Open in Maps")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(settings.accent.readableForeground)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.vertical, Spacing.sm)
                     .background { Capsule().fill(settings.accent) }
                     .contentShape(Capsule())
             }
@@ -271,18 +271,18 @@ struct MapTabView: View {
             .notchHover(scale: 1.04)
         }
         .frame(maxHeight: .infinity)
-        .padding(.horizontal, 8)
+        .padding(.horizontal, Spacing.sm)
     }
 
     /// The destination as a card: name + address, with a category glyph.
     private var placeCard: some View {
         Group {
             if let d = destination {
-                HStack(spacing: 10) {
+                HStack(spacing: Spacing.md) {
                     Image(systemName: "mappin.circle.fill")
                         .font(.system(size: 18))
                         .foregroundStyle(settings.accent)
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: Spacing.hair) {
                         Text(d.name ?? "Destination")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(.white)
@@ -296,7 +296,7 @@ struct MapTabView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(10)
+                .padding(Spacing.md)
                 .frame(maxWidth: .infinity)
                 .background {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -309,13 +309,13 @@ struct MapTabView: View {
     // MARK: Idle panel (no destination) — a "where to?" launcher
 
     private var idlePanel: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
             // Where you are.
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.sm) {
                 Image(systemName: "location.fill")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(settings.accent)
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: Spacing.hair) {
                     Text("You're near")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(Theme.secondaryText)
@@ -328,16 +328,16 @@ struct MapTabView: View {
             }
 
             // Nearby quick-search.
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
                 Text("NEARBY")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(Theme.secondaryText)
                     .kerning(0.6)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3),
-                          spacing: 8) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.sm), count: 3),
+                          spacing: Spacing.sm) {
                     ForEach(NearbyCategory.allCases) { cat in
                         Button { searchCategory(cat) } label: {
-                            VStack(spacing: 5) {
+                            VStack(spacing: Spacing.s) {
                                 Image(systemName: cat.symbol)
                                     .font(.system(size: 15, weight: .semibold))
                                 Text(cat.title)
@@ -361,14 +361,14 @@ struct MapTabView: View {
 
             // Recent destinations.
             if !recents.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Spacing.s) {
                     Text("RECENT")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(Theme.secondaryText)
                         .kerning(0.6)
                     ForEach(recents.prefix(3)) { place in
                         Button { route(to: place) } label: {
-                            HStack(spacing: 8) {
+                            HStack(spacing: Spacing.sm) {
                                 Image(systemName: "clock.arrow.circlepath")
                                     .font(.system(size: 12))
                                     .foregroundStyle(Theme.secondaryText)
@@ -378,7 +378,7 @@ struct MapTabView: View {
                                     .lineLimit(1)
                                 Spacer(minLength: 0)
                             }
-                            .padding(.vertical, 6)
+                            .padding(.vertical, Spacing.s)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -389,7 +389,7 @@ struct MapTabView: View {
 
             Spacer(minLength: 0)
         }
-        .padding(16)
+        .padding(Spacing.lg)
     }
 
     // MARK: - Actions

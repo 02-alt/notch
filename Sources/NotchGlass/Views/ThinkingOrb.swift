@@ -18,24 +18,36 @@ struct ThinkingOrb: View {
     /// Optional hue. `nil` renders the library's monochrome grayscale (near dots
     /// bright, ghost paths dim) which reads as white-on-dark in the notch.
     var tint: Color? = nil
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let preset = OrbPreset.forSize(size)
-        TimelineView(.animation) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate * preset.speed * speed
-            Canvas { gc, canvasSize in
-                let side = Double(min(canvasSize.width, canvasSize.height))
-                for d in OrbPreset.orbitsFrame(side: side, t: t, p: preset) {
-                    // Dark substrate: mirror the ink so near dots read bright.
-                    let brightness = 1 - d.white
-                    let color = (tint ?? .white).opacity(min(1, max(0, brightness)) * d.a)
-                    let rect = CGRect(x: d.x - d.r, y: d.y - d.r, width: d.r * 2, height: d.r * 2)
-                    gc.fill(Path(ellipseIn: rect), with: .color(color))
+        Group {
+            if reduceMotion {
+                // Reduce Motion: render a single frozen frame — still reads as the
+                // orb, but the particles no longer run their orbits.
+                canvas(preset: preset, t: 0)
+            } else {
+                TimelineView(.animation) { ctx in
+                    canvas(preset: preset, t: ctx.date.timeIntervalSinceReferenceDate * preset.speed * speed)
                 }
             }
         }
         .frame(width: size, height: size)
         .allowsHitTesting(false)
+    }
+
+    private func canvas(preset: OrbPreset, t: Double) -> some View {
+        Canvas { gc, canvasSize in
+            let side = Double(min(canvasSize.width, canvasSize.height))
+            for d in OrbPreset.orbitsFrame(side: side, t: t, p: preset) {
+                // Dark substrate: mirror the ink so near dots read bright.
+                let brightness = 1 - d.white
+                let color = (tint ?? .white).opacity(min(1, max(0, brightness)) * d.a)
+                let rect = CGRect(x: d.x - d.r, y: d.y - d.r, width: d.r * 2, height: d.r * 2)
+                gc.fill(Path(ellipseIn: rect), with: .color(color))
+            }
+        }
     }
 }
 

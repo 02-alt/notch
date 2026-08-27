@@ -13,19 +13,19 @@ struct DeckTabView: View {
     /// The key currently open in the editor sheet, or nil when the editor is closed.
     @State private var editorTarget: DeckButton?
 
-    private let columns = [GridItem(.adaptive(minimum: 84, maximum: 120), spacing: 10)]
+    private let columns = [GridItem(.adaptive(minimum: 84, maximum: 120), spacing: Spacing.md)]
 
     var body: some View {
         // Header lives *above* the editor overlay so opening "New Key" never
         // covers the Deck title / pencil — the editor only fills the content area.
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             header
             ZStack {
                 if store.buttons.isEmpty && !editing {
                     emptyState
                 } else {
                     ScrollView(.vertical, showsIndicators: false) {
-                        LazyVGrid(columns: columns, spacing: 10) {
+                        LazyVGrid(columns: columns, spacing: Spacing.md) {
                             ForEach(store.buttons) { key in
                                 DeckKey(key: key, editing: editing,
                                         accent: settings.accent,
@@ -34,7 +34,7 @@ struct DeckTabView: View {
                             }
                             if editing { addTile }
                         }
-                        .padding(.bottom, 4)
+                        .padding(.bottom, Spacing.xs)
                     }
                 }
 
@@ -87,7 +87,7 @@ struct DeckTabView: View {
         Button {
             editorTarget = DeckButton()
         } label: {
-            VStack(spacing: 6) {
+            VStack(spacing: Spacing.s) {
                 Image(systemName: "plus")
                     .font(.system(size: 20, weight: .medium))
                 Text("Add")
@@ -108,7 +108,7 @@ struct DeckTabView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             Image(systemName: "square.grid.3x3.fill")
                 .font(.system(size: 30, weight: .light))
                 .foregroundStyle(Theme.primaryText.opacity(0.35))
@@ -121,7 +121,7 @@ struct DeckTabView: View {
                 Text("Add a key")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Theme.primaryText)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Spacing.lg)
                     .frame(height: 32)
                     .blackGlass(in: Capsule(), interactive: true)
             }
@@ -143,10 +143,11 @@ private struct DeckKey: View {
     let onDelete: () -> Void
 
     @State private var jiggle = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 6) {
+            VStack(spacing: Spacing.s) {
                 Image(systemName: key.symbol.isEmpty ? key.action.defaultSymbol : key.symbol)
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
@@ -174,8 +175,8 @@ private struct DeckKey: View {
                 .offset(x: 6, y: -6)
             }
         }
-        .rotationEffect(.degrees(editing && jiggle ? 1.2 : 0))
-        .animation(editing ? .easeInOut(duration: 0.14).repeatForever(autoreverses: true) : .default,
+        .rotationEffect(.degrees(editing && jiggle && !reduceMotion ? 1.2 : 0))
+        .animation(editing && !reduceMotion ? .easeInOut(duration: 0.14).repeatForever(autoreverses: true) : .default,
                    value: jiggle)
         .onChange(of: editing) { _, on in jiggle = on }
         .onAppear { if editing { jiggle = true } }
@@ -191,7 +192,7 @@ private struct DeckKeyEditor: View {
     let onCancel: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack {
                 Text(isNew ? "New Key" : "Edit Key")
                     .font(.system(size: 13, weight: .bold))
@@ -220,7 +221,7 @@ private struct DeckKeyEditor: View {
 
             field("Label", text: $draft.label, prompt: "My Key")
 
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.sm) {
                 Image(systemName: draft.symbol.isEmpty ? draft.action.defaultSymbol : draft.symbol)
                     .font(.system(size: 15))
                     .frame(width: 30, height: 30)
@@ -228,7 +229,7 @@ private struct DeckKeyEditor: View {
                 editField(text: $draft.symbol, prompt: "SF Symbol name")
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.sm) {
                 editField(text: $draft.payload, prompt: draft.action.payloadPrompt)
                 if draft.action == .app || draft.action == .file {
                     Button("Choose…") { choose() }
@@ -256,7 +257,7 @@ private struct DeckKeyEditor: View {
             .opacity(draft.payload.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
         }
         .foregroundStyle(Theme.primaryText)
-        .padding(14)
+        .padding(Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -274,7 +275,7 @@ private struct DeckKeyEditor: View {
             .textFieldStyle(.plain)
             .font(.system(size: 12))
             .foregroundStyle(Theme.primaryText)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, Spacing.md)
             .frame(height: 30)
             .frame(maxWidth: .infinity)
             .background {

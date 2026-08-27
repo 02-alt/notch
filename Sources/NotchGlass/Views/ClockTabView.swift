@@ -43,7 +43,7 @@ struct ClockTabView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.base) {
             modePills
             Group {
                 switch mode {
@@ -61,18 +61,18 @@ struct ClockTabView: View {
     // MARK: - Mode selector
 
     private var modePills: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s) {
             ForEach(ClockMode.allCases) { m in
                 let on = mode == m
                 Button { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { mode = m } } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: Spacing.s) {
                         Image(systemName: m.symbol)
                             .font(.system(size: 11, weight: .semibold))
                         Text(m.title)
                             .font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundStyle(on ? settings.accent.readableForeground : Theme.secondaryText)
-                    .padding(.horizontal, 14)
+                    .padding(.horizontal, Spacing.lg)
                     .frame(height: 28)
                     .background {
                         Capsule(style: .continuous)
@@ -89,14 +89,14 @@ struct ClockTabView: View {
             if mode == .clock && timer.isActive {
                 TimelineView(.periodic(from: .now, by: 0.5)) { _ in
                     Button { withAnimation { mode = .timer } } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: Spacing.s) {
                             Image(systemName: timer.finished ? "bell.fill" : "timer")
                                 .font(.system(size: 11, weight: .semibold))
                             Text(timer.finished ? "Done" : Self.clockString(timer.remaining))
                                 .font(.system(size: 12, weight: .bold).monospacedDigit())
                         }
                         .foregroundStyle(timer.finished ? settings.accent : .white)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, Spacing.base)
                         .frame(height: 28)
                         .background { Capsule().fill(Color.white.opacity(0.08)) }
                         .contentShape(Capsule())
@@ -110,14 +110,14 @@ struct ClockTabView: View {
                 TimelineView(.periodic(from: .now, by: 0.5)) { _ in
                     let tint = pomodoro.phase.isBreak ? Self.breakGreen : settings.accent
                     Button { withAnimation { mode = .pomodoro } } label: {
-                        HStack(spacing: 6) {
+                        HStack(spacing: Spacing.s) {
                             Image(systemName: pomodoro.phase.symbol)
                                 .font(.system(size: 11, weight: .semibold))
                             Text(Self.clockString(pomodoro.remaining))
                                 .font(.system(size: 12, weight: .bold).monospacedDigit())
                         }
                         .foregroundStyle(tint)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, Spacing.base)
                         .frame(height: 28)
                         .background { Capsule().fill(Color.white.opacity(0.08)) }
                         .contentShape(Capsule())
@@ -133,7 +133,7 @@ struct ClockTabView: View {
 
     private var clockPane: some View {
         TimelineView(.periodic(from: .now, by: 1.0)) { context in
-            HStack(alignment: .top, spacing: 16) {
+            HStack(alignment: .top, spacing: Spacing.lg) {
                 localClock(now: context.date)
                     .frame(width: 220)
                 Divider().overlay(Color.white.opacity(0.10))
@@ -148,11 +148,11 @@ struct ClockTabView: View {
     /// column reads as one deliberate block rather than a lone oversized number.
     private func localClock(now: Date) -> some View {
         let a = Self.handAngles(now, tz: .current)
-        return VStack(spacing: 12) {
+        return VStack(spacing: Spacing.base) {
             Spacer(minLength: 0)
             ClockFace(hour: a.hour, minute: a.minute, second: a.second,
                       accent: settings.accent, size: 132)
-            VStack(spacing: 3) {
+            VStack(spacing: Spacing.xs) {
                 Text(Self.timeString(now, tz: .current))
                     .font(.system(size: 34, weight: .bold).monospacedDigit())
                     .lineLimit(1)
@@ -160,14 +160,14 @@ struct ClockTabView: View {
                 Text(Self.dateString(now, tz: .current))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Theme.secondaryText)
-                HStack(spacing: 5) {
+                HStack(spacing: Spacing.s) {
                     Image(systemName: "location.fill")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(settings.accent)
                     Text(Self.cityName(for: .current))
                         .font(.system(size: 13, weight: .semibold))
                 }
-                .padding(.top, 1)
+                .padding(.top, Spacing.hair)
             }
             Spacer(minLength: 0)
         }
@@ -175,7 +175,7 @@ struct ClockTabView: View {
     }
 
     private func worldClocks(now: Date) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack {
                 Text("WORLD")
                     .font(.system(size: 9, weight: .bold))
@@ -191,13 +191,13 @@ struct ClockTabView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3),
-                              spacing: 12) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: 3),
+                              spacing: Spacing.base) {
                         ForEach(zones, id: \.self) { id in
                             worldCell(id: id, now: now)
                         }
                     }
-                    .padding(.vertical, 2)
+                    .padding(.vertical, Spacing.hair)
                 }
             }
         }
@@ -208,7 +208,7 @@ struct ClockTabView: View {
     private func worldCell(id: String, now: Date) -> some View {
         let tz = TimeZone(identifier: id) ?? .current
         let a = Self.handAngles(now, tz: tz)
-        return VStack(spacing: 5) {
+        return VStack(spacing: Spacing.s) {
             ClockFace(hour: a.hour, minute: a.minute, second: a.second,
                       accent: settings.accent, size: 58)
             VStack(spacing: 0) {
@@ -266,7 +266,7 @@ struct ClockTabView: View {
     // MARK: - Timer mode
 
     private var timerPane: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .top, spacing: Spacing.lg) {
             countdown
                 .frame(width: 250)
             Divider().overlay(Color.white.opacity(0.10))
@@ -279,11 +279,11 @@ struct ClockTabView: View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
             let active = timer.isActive
             let progress = timer.progress
-            VStack(spacing: 12) {
+            VStack(spacing: Spacing.base) {
                 Spacer(minLength: 0)
                 TimerDial(progress: progress,
                           tint: timer.finished ? Color.green : settings.accent) {
-                    VStack(spacing: 2) {
+                    VStack(spacing: Spacing.hair) {
                         Text(timer.finished ? "Done" : Self.clockString(timer.remaining))
                             .font(.system(size: timer.finished ? 30 : 38, weight: .light).monospacedDigit())
                             .lineLimit(1)
@@ -295,7 +295,7 @@ struct ClockTabView: View {
                                 .lineLimit(1)
                         }
                     }
-                    .padding(26)
+                    .padding(Spacing.xl)
                 }
 
                 controls(active: active)
@@ -306,7 +306,7 @@ struct ClockTabView: View {
 
     @ViewBuilder
     private func controls(active: Bool) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Spacing.md) {
             if timer.finished {
                 capsuleButton(title: "Dismiss", symbol: "checkmark", filled: true) {
                     timer.stop()
@@ -332,14 +332,14 @@ struct ClockTabView: View {
     private func capsuleButton(title: String, symbol: String, filled: Bool,
                                action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 5) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: symbol).font(.system(size: 11, weight: .bold))
                 Text(title).font(.system(size: 12, weight: .bold))
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
             }
             .foregroundStyle(filled ? settings.accent.readableForeground : .white)
-            .padding(.horizontal, 11)
+            .padding(.horizontal, Spacing.base)
             .frame(height: 30)
             .background {
                 Capsule().fill(filled ? settings.accent : Color.white.opacity(0.10))
@@ -351,7 +351,7 @@ struct ClockTabView: View {
     }
 
     private var presetGrid: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             categoryRow
             if isAddingTimer { addTimerForm }
             if timerCategory == .custom && customTimers.isEmpty && !isAddingTimer {
@@ -361,13 +361,13 @@ struct ClockTabView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3),
-                              spacing: 12) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: 3),
+                              spacing: Spacing.base) {
                         ForEach(presetsInCategory) { preset in
                             presetCell(preset)
                         }
                     }
-                    .padding(.vertical, 2)
+                    .padding(.vertical, Spacing.hair)
                 }
             }
             if timerCategory != .custom {
@@ -391,14 +391,14 @@ struct ClockTabView: View {
     /// The category selector: a scrolling row of pills, with a trailing "+" that
     /// jumps to the Custom bucket and opens the add-a-timer form.
     private var categoryRow: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: Spacing.s) {
                     ForEach(TimerCategory.allCases) { c in
                         categoryPill(c)
                     }
                 }
-                .padding(.vertical, 1)
+                .padding(.vertical, Spacing.hair)
             }
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
@@ -423,14 +423,14 @@ struct ClockTabView: View {
         return Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { timerCategory = c }
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: Spacing.xs) {
                 Image(systemName: c.symbol)
                     .font(.system(size: 9, weight: .semibold))
                 Text(c.title)
                     .font(.system(size: 11, weight: .semibold))
             }
             .foregroundStyle(on ? settings.accent.readableForeground : Theme.secondaryText)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, Spacing.md)
             .frame(height: 24)
             .background {
                 Capsule(style: .continuous)
@@ -446,7 +446,7 @@ struct ClockTabView: View {
     private func presetCell(_ preset: TimerPreset) -> some View {
         let on = timer.label == preset.name && timer.isActive
         return Button { timer.start(duration: preset.seconds, label: preset.name) } label: {
-            VStack(spacing: 5) {
+            VStack(spacing: Spacing.s) {
                 ClockFace(hour: preset.hourAngle, minute: preset.minuteAngle,
                           light: on, accent: settings.accent, size: 58)
                 VStack(spacing: 0) {
@@ -476,7 +476,7 @@ struct ClockTabView: View {
 
     /// Inline form to name and time a custom timer.
     private var addTimerForm: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.sm) {
             Image(systemName: "timer")
                 .foregroundStyle(Theme.secondaryText)
             TextField("Name", text: $newTimerName)
@@ -484,7 +484,7 @@ struct ClockTabView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.white)
                 .onSubmit(commitCustomTimer)
-            HStack(spacing: 3) {
+            HStack(spacing: Spacing.xs) {
                 TextField("00", text: $newTimerMinutes)
                     .textFieldStyle(.plain)
                     .frame(width: 26)
@@ -506,8 +506,8 @@ struct ClockTabView: View {
                 .foregroundStyle(settings.accent)
                 .notchHover(scale: 1.08)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, Spacing.base)
+        .padding(.vertical, Spacing.sm)
         .innerCard(cornerRadius: 12)
     }
 
@@ -530,7 +530,7 @@ struct ClockTabView: View {
     /// current phase, its countdown and the cycle progress dots; a compact settings
     /// column on the right tunes the focus/break lengths and the long-break cadence.
     private var pomodoroPane: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(alignment: .top, spacing: Spacing.lg) {
             pomodoroDial
                 .frame(width: 250)
             Divider().overlay(Color.white.opacity(0.10))
@@ -543,10 +543,10 @@ struct ClockTabView: View {
         TimelineView(.periodic(from: .now, by: 0.25)) { _ in
             let tint = pomodoro.phase.isBreak ? Self.breakGreen : settings.accent
             let progress = pomodoro.progress
-            VStack(spacing: 12) {
+            VStack(spacing: Spacing.base) {
                 Spacer(minLength: 0)
                 TimerDial(progress: progress, tint: tint) {
-                    VStack(spacing: 3) {
+                    VStack(spacing: Spacing.xs) {
                         Image(systemName: pomodoro.phase.symbol)
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(tint)
@@ -558,7 +558,7 @@ struct ClockTabView: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.secondaryText)
                     }
-                    .padding(24)
+                    .padding(Spacing.xl)
                 }
 
                 cycleDots(tint: tint)
@@ -571,7 +571,7 @@ struct ClockTabView: View {
     /// One dot per focus session in the run up to a long break; filled as each
     /// session completes, so you can see how far you are into the cycle.
     private func cycleDots(tint: Color) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s) {
             ForEach(0..<max(1, pomodoro.focusRounds), id: \.self) { i in
                 Circle()
                     .fill(i < pomodoro.completedFocus ? tint : Color.white.opacity(0.15))
@@ -581,7 +581,7 @@ struct ClockTabView: View {
     }
 
     private var pomodoroControls: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.sm) {
             capsuleButton(title: pomodoro.isRunning ? "Pause" : (pomodoro.paused ? "Resume" : "Start"),
                           symbol: pomodoro.isRunning ? "pause.fill" : "play.fill",
                           filled: !pomodoro.isRunning) {
@@ -599,7 +599,7 @@ struct ClockTabView: View {
     }
 
     private var pomodoroSettings: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack {
                 Text("SESSION")
                     .font(.system(size: 9, weight: .bold))
@@ -631,8 +631,8 @@ struct ClockTabView: View {
             }
             .toggleStyle(.switch)
             .tint(settings.accent)
-            .padding(.horizontal, 10)
-            .padding(.top, 2)
+            .padding(.horizontal, Spacing.md)
+            .padding(.top, Spacing.hair)
             Spacer(minLength: 0)
         }
     }
@@ -641,7 +641,7 @@ struct ClockTabView: View {
     private func stepperRow(_ title: String, value: Int, unit: String,
                             range: ClosedRange<Int>, step: Int = 1,
                             set: @escaping (Int) -> Void) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.sm) {
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(.white)
@@ -653,7 +653,7 @@ struct ClockTabView: View {
                 .frame(minWidth: 30)
             stepButton("plus") { if value + step <= range.upperBound { set(value + step) } }
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, Spacing.md)
         .frame(height: 32)
         .innerCard(cornerRadius: 12)
     }
@@ -836,7 +836,7 @@ private struct ClockFace: View {
             Circle().fill(light ? Color.white : Color.white.opacity(0.06))
             DialTicks(major: light ? Color.black.opacity(0.30) : Color.white.opacity(0.28),
                       minor: light ? Color.black.opacity(0.15) : Color.white.opacity(0.12))
-                .padding(4)
+                .padding(Spacing.xs)
             hand(length: size * 0.24, width: 3, angle: hour,
                  color: light ? .black : .white)
             hand(length: size * 0.36, width: 2.4, angle: minute,
@@ -902,7 +902,7 @@ private struct TimerDial<Center: View>: View {
         ZStack {
             Circle().fill(Color.white.opacity(0.03))
             GraduatedTicks(progress: progress, tint: tint)
-                .padding(6)
+                .padding(Spacing.s)
             center()
         }
         .frame(width: size, height: size)

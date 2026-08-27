@@ -20,6 +20,20 @@ final class FuelEventMonitor: ObservableObject {
     /// gauge (`CollapsedResting.fuel`) so a live "% left" can show while closed.
     @Published private(set) var sessionUsed: Double?
 
+    /// When the 5-hour session window refills. The collapsed peek counts down to this
+    /// locally (its "refund timer") between the slow background polls.
+    @Published private(set) var sessionResetsAt: Date?
+
+    /// The weekly window: fraction used (0…1) and when it rolls over. The peek surfaces
+    /// the weekly reset countdown once the weekly limit is reached.
+    @Published private(set) var weekUsed: Double?
+    @Published private(set) var weekResetsAt: Date?
+
+    /// Extra-usage ("credits") spend, in major units, and its currency symbol — shown
+    /// in the peek only once you're actually on credits (spend > 0).
+    @Published private(set) var creditsUsed: Double?
+    @Published private(set) var creditsSymbol: String = "$"
+
     /// The last readings we saw, to detect the transitions that fire events: the
     /// session drop on refill / climb into "low", the weekly window maxing out or
     /// resetting, and the first dollar of extra-usage credits being spent.
@@ -53,6 +67,10 @@ final class FuelEventMonitor: ObservableObject {
         lastSessionUsed = nil
         lastWeekUsed = nil
         lastCreditsUsed = nil
+        sessionResetsAt = nil
+        weekUsed = nil
+        weekResetsAt = nil
+        creditsUsed = nil
     }
 
     private func poll() {
@@ -75,6 +93,7 @@ final class FuelEventMonitor: ObservableObject {
         guard let session else { return }
         let current = min(1, max(0, session.utilization / 100))
         sessionUsed = current
+        sessionResetsAt = session.resetsAt
         defer { lastSessionUsed = current }
         guard let last = lastSessionUsed else { return } // first sample: just seed
 
@@ -90,6 +109,8 @@ final class FuelEventMonitor: ObservableObject {
     private func handleWeek(_ week: LiveWindow?) {
         guard let week else { return }
         let current = min(1, max(0, week.utilization / 100))
+        weekUsed = current
+        weekResetsAt = week.resetsAt
         defer { lastWeekUsed = current }
         guard let last = lastWeekUsed else { return }
 
@@ -103,6 +124,14 @@ final class FuelEventMonitor: ObservableObject {
     /// Extra-usage credits: fires once, when the first credit is spent — i.e. you've
     /// gone past the included limits and are now paying for overage.
     private func handleCredits(_ credits: LiveCredits?) {
+        // Surface the live spend for the peek whenever we're actually on credits
+        // (spend > 0), regardless of whether the transition event ever fires.
+        if let credits, credits.used > 0 {
+            creditsUsed = credits.used
+            creditsSymbol = FuelManager.currencySymbol(credits.currency)
+        } else {
+            creditsUsed = nil
+        }
         guard let credits, credits.everEnabled else { return }
         let used = credits.used
         defer { lastCreditsUsed = used }

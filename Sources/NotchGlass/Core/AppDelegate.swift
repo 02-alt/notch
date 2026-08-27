@@ -40,9 +40,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         buildPanel()
 
-        // Light the collapsed-notch transfer spinner when an AirDrop file lands.
+        // Light the collapsed-notch transfer spinner when an AirDrop file lands. With
+        // Dynamic Island on, the same landing instead auto-expands into the island
+        // presentation (radiowaves + orb) rather than the plain in-place spinner.
         let watcher = AirDropWatcher { [weak self] in
-            self?.viewModel.flashTransfer()
+            guard let self else { return }
+            if self.settings.dynamicIsland {
+                self.viewModel.presentIsland(.init(kind: .airDrop))
+            } else {
+                self.viewModel.flashTransfer()
+            }
         }
         watcher.start()
         airDropWatcher = watcher
@@ -87,12 +94,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
-        // The resting battery gauge polls only while it's the chosen resting stat.
+        // The battery gauge polls while it's the chosen resting stat, or whenever
+        // Dynamic Island is on (the always-on island shows battery on its trailing wing).
         settings.$collapsedResting
-            .map { $0 == .battery }
+            .combineLatest(settings.$dynamicIsland)
+            .map { resting, island in resting == .battery || island }
             .removeDuplicates()
             .sink { [weak self] wantsBattery in
                 if wantsBattery { self?.batteryMonitor.start() } else { self?.batteryMonitor.stop() }
+            }
+            .store(in: &cancellables)
+
+        // Dynamic Island: a *new track* auto-expands the closed pill into the island
+        // presentation (art + title / EQ), then it settles back on its own. We key on
+        // `islandKey` — the track's identity, or a YouTube tab's video id — so a mere
+        // pause/resume/scrub, or YouTube's hover-preview metadata churn, never re-fires
+        // it; `removeDuplicates` suppresses the repeats and `dropFirst` swallows the
+        // state present at launch so starting the app doesn't pop the island for
+        // whatever was already playing.
+        nowPlaying.$islandKey
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] key in
+                guard let self, !key.isEmpty else { return }
+                // Don't surface the island for an app you're already looking at — if
+                // the source driving playback is the frontmost app (you're on the
+                // YouTube page yourself), there's nothing the notch needs to tell you.
+                if let source = self.nowPlaying.source,
+                   NSWorkspace.shared.frontmostApplication?.bundleIdentifier == source.bundleID {
+                    return
+                }
+                self.viewModel.presentIsland(.init(kind: .nowPlaying))
+            }
+            .store(in: &cancellables)
+
+        // Dynamic Island: a finished countdown auto-expands the pill into a "Time's
+        // up" alert. `dropFirst` skips the idle `false` at launch; the guard ignores
+        // the reset back to `false` when the alert is dismissed.
+        CountdownTimer.shared.$finished
+            .removeDuplicates()
+            .dropFirst()
+            .sink { [weak self] finished in
+                guard let self, finished else { return }
+                self.viewModel.presentIsland(.init(kind: .timerDone(label: CountdownTimer.shared.label)))
             }
             .store(in: &cancellables)
 
@@ -234,7 +278,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the notch display. Content morphs inside it; the window itself never resizes.
     private func panelFrame() -> NSRect {
         let width = Metrics.windowContentWidth(panelWidth: CGFloat(settings.panelWidth))
-        let height = Metrics.windowContentHeight + Metrics.openTopGap
+        // Extra `islandFloatGap` of headroom so the floating island (dropped below the
+        // top edge in Dynamic Island mode) is never clipped at the window's bottom.
+        let height = Metrics.windowContentHeight + Metrics.openTopGap + Metrics.islandFloatGap
         guard let screen = targetScreen else {
             return NSRect(x: 0, y: 0, width: width, height: height)
         }

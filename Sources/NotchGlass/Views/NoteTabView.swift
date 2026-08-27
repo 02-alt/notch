@@ -13,7 +13,7 @@ struct NoteTabView: View {
                let note = vm.notes.first(where: { $0.id == id }) {
                 if let secondID = vm.secondaryNoteID,
                    let second = vm.notes.first(where: { $0.id == secondID }) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: Spacing.sm) {
                         NoteEditor(note: note)
                         NoteEditor(note: second, isSecondary: true)
                     }
@@ -39,7 +39,7 @@ private struct NoteHome: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
+            HStack(spacing: Spacing.md) {
                 ForEach(vm.noteFolders) { folder in
                     NoteFolderTile(folder: folder,
                                    count: vm.notes(inFolder: folder.id).count) {
@@ -66,7 +66,7 @@ private struct NoteHome: View {
                 addNoteTile
                 newFolderTile
             }
-            .padding(.horizontal, 2)
+            .padding(.horizontal, Spacing.hair)
             .frame(maxHeight: .infinity)
         }
     }
@@ -82,7 +82,7 @@ private struct NoteHome: View {
             let id = vm.addNoteFolder()
             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { vm.openNoteFolderID = id }
         } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 Image(systemName: "folder.badge.plus")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(settings.accent)
@@ -119,8 +119,8 @@ private struct BookDetail: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(spacing: Spacing.sm) {
+            HStack(spacing: Spacing.sm) {
                 Button {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         vm.openNoteFolderID = nil
@@ -164,7 +164,7 @@ private struct BookDetail: View {
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+                HStack(spacing: Spacing.md) {
                     ForEach(vm.notes(inFolder: folderID)) { note in
                         NoteCard(note: note, currentFolder: folderID) {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
@@ -181,7 +181,7 @@ private struct BookDetail: View {
                         }
                     }
                 }
-                .padding(.horizontal, 2)
+                .padding(.horizontal, Spacing.hair)
                 .frame(maxHeight: .infinity)
             }
         }
@@ -206,7 +206,7 @@ private struct NoteFolderTile: View {
 
     var body: some View {
         Button(action: open) {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(settings.accent.opacity(isTargeted ? 0.4 : 0.18))
@@ -249,7 +249,7 @@ private struct NoteFolderTile: View {
                 Text("\(count)")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 5).padding(.vertical, 2)
+                    .padding(.horizontal, Spacing.s).padding(.vertical, Spacing.hair)
                     .background(Capsule().fill(Color.black.opacity(0.5)))
                     .offset(x: 6, y: 6)
             }
@@ -297,7 +297,7 @@ private struct NoteCard: View {
                         .clipped()
                         .overlay(alignment: .topTrailing) { photoBadge }
                 }
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text(note.title)
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Theme.primaryText)
@@ -308,7 +308,7 @@ private struct NoteCard: View {
                         .lineLimit(note.images.isEmpty ? 3 : 2)
                     Spacer(minLength: 0)
                 }
-                .padding(10)
+                .padding(Spacing.md)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
             .frame(width: 118, height: 118, alignment: .topLeading)
@@ -351,15 +351,15 @@ private struct NoteCard: View {
     private var photoBadge: some View {
         Group {
             if note.images.count > 1 {
-                HStack(spacing: 2) {
+                HStack(spacing: Spacing.hair) {
                     Image(systemName: "photo.on.rectangle")
                     Text("\(note.images.count)")
                 }
                 .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(.white)
-                .padding(.horizontal, 5).padding(.vertical, 2)
+                .padding(.horizontal, Spacing.s).padding(.vertical, Spacing.hair)
                 .background(Capsule().fill(Color.black.opacity(0.55)))
-                .padding(5)
+                .padding(Spacing.s)
             }
         }
     }
@@ -374,7 +374,7 @@ private struct AddTile: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Theme.primaryText)
@@ -446,8 +446,8 @@ private struct NoteEditor: View {
     }
 
     private var content: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(spacing: Spacing.sm) {
+            HStack(spacing: Spacing.sm) {
                 Button {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         if isSecondary { vm.closeSecondNote() } else { vm.closeNoteEditor() }
@@ -537,7 +537,7 @@ private struct NoteEditor: View {
         Button {
             withAnimation(Metrics.openSpring) { vm.openSecondNote() }
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: "rectangle.split.2x1")
                     .font(.system(size: 12, weight: .semibold))
                 Text("Open a 2nd note")
@@ -545,7 +545,7 @@ private struct NoteEditor: View {
             }
             .foregroundStyle(settings.accent)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .padding(.vertical, Spacing.sm)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -559,8 +559,8 @@ private struct NoteEditor: View {
                 Text("Jot something down…  (drag a photo right into the text)")
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.tertiaryText)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.vertical, Spacing.lg)
                     .allowsHitTesting(false)
             }
             InlineNoteEditor(
@@ -584,8 +584,8 @@ private struct NoteEditor: View {
                 }
             )
             .id(note.id)
-            .padding(.horizontal, 3)
-            .padding(.vertical, 2)
+            .padding(.horizontal, Spacing.xs)
+            .padding(.vertical, Spacing.hair)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .innerCard()
@@ -631,8 +631,8 @@ private struct ChecklistSection: View {
             // so there's no empty-state button here anymore.
             EmptyView()
         } else {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: Spacing.s) {
+                HStack(spacing: Spacing.s) {
                     Image(systemName: "checklist")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(Theme.secondaryText)
@@ -644,7 +644,7 @@ private struct ChecklistSection: View {
                 }
 
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 4) {
+                    VStack(spacing: Spacing.xs) {
                         ForEach(items) { item in
                             ChecklistRow(item: item, noteID: noteID)
                         }
@@ -652,7 +652,7 @@ private struct ChecklistSection: View {
                 }
                 .frame(maxHeight: expanded ? 220 : 92)
             }
-            .padding(10)
+            .padding(Spacing.md)
             .innerCard(cornerRadius: 12)
         }
     }
@@ -661,7 +661,7 @@ private struct ChecklistSection: View {
         Button {
             vm.addChecklistItem(to: noteID)
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 12, weight: .semibold))
                 Text(label)
@@ -700,7 +700,7 @@ private struct ChecklistRow: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.sm) {
             Button {
                 withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
                     vm.toggleChecklistItem(item.id, in: noteID)
@@ -731,8 +731,8 @@ private struct ChecklistRow: View {
             .notchHover(scale: 1.15)
             .opacity(hovering ? 1 : 0)
         }
-        .padding(.vertical, 3)
-        .padding(.horizontal, 6)
+        .padding(.vertical, Spacing.xs)
+        .padding(.horizontal, Spacing.s)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Theme.line(hovering ? 0.06 : 0))
@@ -835,7 +835,7 @@ private struct CoverFlowGallery: View {
                 chevron("chevron.right", enabled: selected < images.count - 1) { step(by: 1) }
             }
         }
-        .padding(12)
+        .padding(Spacing.base)
         .allowsHitTesting(true)
     }
 

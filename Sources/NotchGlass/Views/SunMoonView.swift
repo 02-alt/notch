@@ -259,7 +259,7 @@ struct SunArcCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: Spacing.hair) {
                     Text("SUN")
                         .font(.system(size: 9, weight: .bold)).kerning(0.6)
                         .foregroundStyle(Theme.secondaryText)
@@ -268,7 +268,7 @@ struct SunArcCard: View {
                 }
                 Spacer(minLength: 0)
                 if let len = model.dayLength {
-                    VStack(alignment: .trailing, spacing: 1) {
+                    VStack(alignment: .trailing, spacing: Spacing.hair) {
                         Text("DAYLIGHT")
                             .font(.system(size: 9, weight: .bold)).kerning(0.6)
                             .foregroundStyle(Theme.secondaryText)
@@ -277,8 +277,8 @@ struct SunArcCard: View {
                     }
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.base)
 
             GeometryReader { geo in
                 let map = ArcMap(samples: model.sunSamples, dayStart: model.dayStart, size: geo.size)
@@ -330,14 +330,14 @@ struct SunArcCard: View {
     private var accentSun: Color { Color(red: 1.0, green: 0.83, blue: 0.42) }
 
     private func horizonPill(_ symbol: String, _ date: Date, at p: CGPoint) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.xs) {
             Image(systemName: symbol).font(.system(size: 9, weight: .bold))
             Text(date.formatted(date: .omitted, time: .shortened))
                 .font(.system(size: 10, weight: .bold).monospacedDigit())
         }
         .foregroundStyle(.white)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
+        .padding(.horizontal, Spacing.sm)
+        .padding(.vertical, Spacing.xs)
         .background { Capsule().fill(Color.black.opacity(0.55)) }
         .overlay { Capsule().strokeBorder(Color.white.opacity(0.12), lineWidth: 1) }
         .fixedSize()
@@ -396,8 +396,8 @@ struct GoldenHourCard: View {
     let model: SkyModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
                 Text(model.goldenHour?.formatted(date: .omitted, time: .shortened) ?? "—")
                     .font(.system(size: 20, weight: .bold))
                 Text("GOLDEN HOUR")
@@ -419,7 +419,7 @@ struct GoldenHourCard: View {
                 }
             }
         }
-        .padding(12)
+        .padding(Spacing.base)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -473,9 +473,9 @@ struct MoonCard: View {
     let model: SkyModel
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.base) {
             MoonDisc(fraction: model.moonFraction, waxing: model.moonWaxing, size: 56)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(model.moonPhaseName)
                     .font(.system(size: 13, weight: .bold))
                     .lineLimit(2)
@@ -483,21 +483,21 @@ struct MoonCard: View {
                 Text("\(Int((model.moonFraction * 100).rounded()))% lit")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
-                HStack(spacing: 4) {
+                HStack(spacing: Spacing.xs) {
                     Image(systemName: "arrow.up").font(.system(size: 8, weight: .bold))
                     Text(model.moonrise?.formatted(date: .omitted, time: .shortened) ?? "—")
                         .font(.system(size: 10, weight: .semibold).monospacedDigit())
                     Image(systemName: "arrow.down").font(.system(size: 8, weight: .bold))
-                        .padding(.leading, 2)
+                        .padding(.leading, Spacing.hair)
                     Text(model.moonset?.formatted(date: .omitted, time: .shortened) ?? "—")
                         .font(.system(size: 10, weight: .semibold).monospacedDigit())
                 }
                 .foregroundStyle(Theme.tertiaryText)
-                .padding(.top, 1)
+                .padding(.top, Spacing.hair)
             }
             Spacer(minLength: 0)
         }
-        .padding(12)
+        .padding(Spacing.base)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -582,7 +582,7 @@ struct MoonPhaseStripCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
-                HStack(spacing: 5) {
+                HStack(spacing: Spacing.s) {
                     Image(systemName: "moon.stars.fill")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(Theme.secondaryText)
@@ -595,12 +595,12 @@ struct MoonPhaseStripCard: View {
                       systemImage: model.moonWaxing ? "arrow.up.right" : "arrow.down.right")
                     .font(.system(size: 9, weight: .bold)).kerning(0.3)
                     .foregroundStyle(Theme.secondaryText)
-                    .padding(.horizontal, 7).padding(.vertical, 3)
+                    .padding(.horizontal, Spacing.sm).padding(.vertical, Spacing.xs)
                     .background { Capsule().fill(Color.white.opacity(0.06)) }
                     .overlay { Capsule().strokeBorder(Color.white.opacity(0.10), lineWidth: 1) }
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 12)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.base)
 
             GeometryReader { geo in strip(in: geo.size) }
         }
@@ -648,7 +648,7 @@ struct MoonPhaseStripCard: View {
             }
 
             // Today's illuminated percentage, sitting above the hero disc.
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.hair) {
                 Text("\(Int((model.moonFraction * 100).rounded()))")
                     .font(.system(size: 26, weight: .heavy).monospacedDigit())
                 Text("%")
@@ -674,12 +674,12 @@ struct DaylightBandCard: View {
     let accent: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.base) {
             HStack(alignment: .top) {
                 timeLabel("SUNRISE", model.sunrise, "sunrise.fill", align: .leading)
                 Spacer(minLength: 0)
                 if let g = model.goldenHour {
-                    VStack(spacing: 1) {
+                    VStack(spacing: Spacing.hair) {
                         Label("GOLDEN HOUR", systemImage: "sun.max.fill")
                             .font(.system(size: 8.5, weight: .bold)).kerning(0.4)
                             .foregroundStyle(Color(red: 1.0, green: 0.78, blue: 0.42))
@@ -716,7 +716,7 @@ struct DaylightBandCard: View {
             .frame(height: 22)
             Spacer(minLength: 0)
         }
-        .padding(14)
+        .padding(Spacing.lg)
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
@@ -733,7 +733,7 @@ struct DaylightBandCard: View {
 
     private func timeLabel(_ title: String, _ date: Date?, _ symbol: String,
                            align: HorizontalAlignment) -> some View {
-        VStack(alignment: align, spacing: 1) {
+        VStack(alignment: align, spacing: Spacing.hair) {
             Label(title, systemImage: symbol)
                 .font(.system(size: 8.5, weight: .bold)).kerning(0.4)
                 .foregroundStyle(Theme.secondaryText)
@@ -830,17 +830,17 @@ struct SunMoonBoardView: View {
     // ForEach/HStack (it otherwise fails to infer the TimelineView's content type).
     private func board(model: SkyModel) -> some View {
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 10) {
+            VStack(spacing: Spacing.md) {
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     rowView(row, model: model)
                 }
             }
-            .padding(.vertical, 1)
+            .padding(.vertical, Spacing.hair)
         }
     }
 
     private func rowView(_ row: [BoardItem], model: SkyModel) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Spacing.md) {
             ForEach(row) { item in
                 itemView(item, model: model)
                     .frame(maxWidth: .infinity, minHeight: rowHeight(row), maxHeight: rowHeight(row))
@@ -918,7 +918,7 @@ struct SunMoonBoardView: View {
                 Button { add(b) } label: { Label(b.title, systemImage: b.symbol) }
             }
         } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 Image(systemName: "plus")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)

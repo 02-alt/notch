@@ -71,6 +71,14 @@ final class NowPlayingManager: ObservableObject {
     @Published var hasTrack: Bool = false
     @Published var source: MediaSource?
 
+    /// Identity used to decide when a *new* item should auto-expand the Dynamic Island.
+    /// For a browser tab on YouTube we key on the video id, so the constant media-session
+    /// metadata churn from hover-preview thumbnails (and a mere pause/resume/scrub of the
+    /// same video) never re-fires the island; it only pops on a genuine video change.
+    /// Everything else (native players, non-YouTube browser video) keys on the track's
+    /// title/artist/album. Empty when nothing is playing.
+    @Published var islandKey: String = ""
+
     /// Chapter start times (seconds, ascending, first is 0) when the current source
     /// exposes them — currently YouTube in a browser. Empty otherwise. Drives the
     /// segmented "chapter pill" scrubber.
@@ -605,6 +613,13 @@ final class NowPlayingManager: ObservableObject {
         if !isScrubbing { position = info.position }
         currentVideoID = info.videoID
 
+        // A browser tab on YouTube is identified by its video id (so hover-preview
+        // metadata and same-video transport never re-fire the island); anything else
+        // by its track fields.
+        islandKey = (source.isBrowser && info.videoID != nil)
+            ? "yt:\(info.videoID!)"
+            : "\(info.title)|\(info.artist)|\(info.album)"
+
         // Chapters: prefer the complete Innertube-fetched set for this exact video;
         // until that lands (or for non-YouTube video) use the DOM-scraped ones.
         let effectiveChapters = (info.videoID != nil && info.videoID == chapterVideoID)
@@ -640,6 +655,7 @@ final class NowPlayingManager: ObservableObject {
         artworkKey = ""
         chapters = []
         currentVideoID = nil
+        islandKey = ""
         supportsVolume = false
     }
 

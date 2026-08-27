@@ -10,7 +10,7 @@ struct DropTabView: View {
     @State private var airDropTargeted = false
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.base) {
             airDropCard
             dropShelf
         }
@@ -22,7 +22,7 @@ struct DropTabView: View {
         Button {
             shareViaAirDrop()
         } label: {
-            VStack(spacing: 10) {
+            VStack(spacing: Spacing.md) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
@@ -113,7 +113,7 @@ struct DropTabView: View {
                 )
 
             if vm.droppedItems.isEmpty {
-                VStack(spacing: 8) {
+                VStack(spacing: Spacing.sm) {
                     Image(systemName: "arrow.down.circle")
                         .font(.system(size: 22, weight: .medium))
                         .foregroundStyle(Theme.secondaryText)
@@ -148,7 +148,7 @@ struct DropTabView: View {
     }
 
     private var fileList: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Spacing.s) {
             HStack {
                 Text("\(vm.droppedItems.count) file\(vm.droppedItems.count == 1 ? "" : "s")")
                     .font(.system(size: 11, weight: .semibold))
@@ -166,15 +166,15 @@ struct DropTabView: View {
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+                HStack(spacing: Spacing.md) {
                     ForEach(vm.droppedItems) { item in
                         FileChip(item: item) { vm.removeDropped(item) }
                     }
                 }
-                .padding(.horizontal, 2)
+                .padding(.horizontal, Spacing.hair)
             }
         }
-        .padding(12)
+        .padding(Spacing.base)
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) {
@@ -194,7 +194,7 @@ private struct FileChip: View {
     let remove: () -> Void
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Spacing.s) {
             Image(nsImage: item.icon)
                 .resizable()
                 .frame(width: 40, height: 40)
@@ -205,7 +205,7 @@ private struct FileChip: View {
                 .truncationMode(.middle)
                 .frame(width: 64)
         }
-        .padding(8)
+        .padding(Spacing.sm)
         .innerCard(cornerRadius: 12)
         .notchHover(cursor: .grabIdle)
         .overlay(alignment: .topTrailing) {

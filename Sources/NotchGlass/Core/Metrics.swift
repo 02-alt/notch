@@ -123,6 +123,12 @@ enum Metrics {
     /// notch), so there is no gap above it.
     static let openTopGap: CGFloat = 0
 
+    /// How far the *floating* Dynamic Island drops below the screen's top edge when
+    /// that mode is on — enough that the desktop shows above and around it, so the
+    /// collapsed pill reads as a detached iPhone-style island rather than welding to
+    /// the bezel. Only applies to the collapsed pill; the open panel still welds.
+    static let islandFloatGap: CGFloat = 10
+
     /// The window is fixed at the tallest body it will ever show, so it never has
     /// to resize — the body just grows/shrinks inside it.
     static var windowContentHeight: CGFloat { max(openHeight, settingsMaxHeight, fuelHeight, moodExpandedHeight) }
@@ -169,10 +175,55 @@ enum Metrics {
     /// cleanly back into the notch without jittering.
     static let closeSpring: Animation = .spring(response: 0.34, dampingFraction: 0.92)
 
+    /// Dynamic Island expand: a quick, lively pop with a touch more overshoot than
+    /// the panel open — the pill is small, so it should snap out and bounce a hair
+    /// to read as a physical *jump*, iPhone-style, rather than a slow unfold.
+    static let islandExpand: Animation = .spring(response: 0.36, dampingFraction: 0.62)
+
+    /// Dynamic Island settle: smooth and fully damped, so the pill eases back into
+    /// the bare notch with no wobble once the activity's moment has passed.
+    static let islandSettle: Animation = .spring(response: 0.42, dampingFraction: 0.95)
+
     /// How long a dragged item must hover a tab before the board spring-loads
     /// (switches to that tab). Tuned shorter than a literal "couple seconds" so it
     /// feels responsive rather than stuck; nudge up if it triggers too eagerly.
     static let springLoadDelay: Double = 0.9
+}
+
+/// The shared spacing scale — one place for every `.padding(…)` and stack
+/// `spacing:` in the app, so gaps stay on a common grid instead of each view
+/// hard-coding its own near-duplicate literals.
+///
+/// The scale is a **2pt grid** because that is the rhythm the notch UI already
+/// follows: 2/6/8/10/12 are all load-bearing (6 and 10 are the two most common
+/// stack gaps), so a coarser 4pt scale would move the app's most-used spacings
+/// everywhere. Adopting these tokens snapped the genuine off-grid outliers
+/// (odd values, and the sparse 18/22/26) to the nearest step; everything already
+/// on the grid tokenizes with no pixel change.
+///
+/// Naming is size-ordered so call sites read as intent, not magic numbers:
+/// `.padding(Spacing.lg)` instead of `.padding(Spacing.lg)`.
+enum Spacing {
+    /// 2 — hairline gap (dividers, tight insets).
+    static let hair: CGFloat = 2
+    /// 4 — extra-small.
+    static let xs: CGFloat = 4
+    /// 6 — small.
+    static let s: CGFloat = 6
+    /// 8 — the default control gap.
+    static let sm: CGFloat = 8
+    /// 10 — medium.
+    static let md: CGFloat = 10
+    /// 12 — the default card/row inset.
+    static let base: CGFloat = 12
+    /// 16 — large; section padding.
+    static let lg: CGFloat = 16
+    /// 24 — extra-large; between distinct groups.
+    static let xl: CGFloat = 24
+    /// 32 — section separation.
+    static let xxl: CGFloat = 32
+    /// 48 — page-level breathing room.
+    static let xxxl: CGFloat = 48
 }
 
 /// Reused colors + a couple of Liquid Glass helpers.

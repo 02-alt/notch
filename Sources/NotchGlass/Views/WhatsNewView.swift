@@ -18,21 +18,21 @@ struct WhatsNewView: View {
     private var headline: ReleaseNote? { releases.first }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.base) {
             header
 
             // Sized to fit by the panel body, so this normally shows every row
             // without scrolling; the ScrollView is only a safety net for an
             // unusually long release.
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 10) {
+                VStack(spacing: Spacing.md) {
                     ForEach(releases) { release in
                         ForEach(release.changes) { change in
                             changeRow(change)
                         }
                     }
                 }
-                .padding(.horizontal, 1)
+                .padding(.horizontal, Spacing.hair)
             }
 
             Button(action: onDismiss) {
@@ -40,7 +40,7 @@ struct WhatsNewView: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(accent.readableForeground)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
+                    .padding(.vertical, Spacing.base)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -55,9 +55,9 @@ struct WhatsNewView: View {
     }
 
     private var header: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Spacing.sm) {
             HStack {
-                HStack(spacing: 6) {
+                HStack(spacing: Spacing.s) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(accent)
@@ -70,7 +70,7 @@ struct WhatsNewView: View {
                     Text("Version \(v)")
                         .font(.system(size: 10.5, weight: .bold))
                         .foregroundStyle(.white.opacity(0.9))
-                        .padding(.horizontal, 9).padding(.vertical, 4)
+                        .padding(.horizontal, Spacing.md).padding(.vertical, Spacing.xs)
                         .background(Capsule().fill(accent.opacity(0.25)))
                         .overlay(Capsule().strokeBorder(accent.opacity(0.5), lineWidth: 1))
                 }
@@ -85,14 +85,14 @@ struct WhatsNewView: View {
     }
 
     private func changeRow(_ change: ReleaseChange) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: Spacing.base) {
             Image(systemName: change.symbol)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(accent)
                 .frame(width: 36, height: 36)
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(accent.opacity(0.16)))
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(change.title)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.white)
@@ -103,7 +103,7 @@ struct WhatsNewView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(11)
+        .padding(Spacing.base)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
             .fill(Color.white.opacity(0.05)))

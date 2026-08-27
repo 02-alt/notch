@@ -50,14 +50,14 @@ struct FuelTabView: View {
     }
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Spacing.base) {
             header
             // The block board scrolls: the count is user-driven (a big card plus up to
             // nine small ones), so it can outgrow the fixed panel. A click-drag on a card
             // reorders it (macOS scrolls on wheel/trackpad, so the two don't fight).
             ScrollView(.vertical) {
                 blocksLayout
-                    .padding(.bottom, 2)
+                    .padding(.bottom, Spacing.hair)
             }
             .scrollBounceBehavior(.basedOnSize)
         }
@@ -74,10 +74,10 @@ struct FuelTabView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .center, spacing: Spacing.md) {
+            VStack(alignment: .leading, spacing: Spacing.hair) {
                 providerPicker
-                HStack(spacing: 5) {
+                HStack(spacing: Spacing.s) {
                     Circle()
                         .fill(hasLive ? Color(red: 0.36, green: 0.86, blue: 0.52) : Color.white.opacity(0.35))
                         .frame(width: 6, height: 6)
@@ -112,7 +112,7 @@ struct FuelTabView: View {
         Button {
             presentProviderMenu()
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: Spacing.s) {
                 Text(settings.fuelProvider.headerTitle)
                     .font(.system(size: 12, weight: .bold, design: .monospaced))
                     .kerning(1.5)
@@ -147,9 +147,9 @@ struct FuelTabView: View {
     // MARK: - Big level meter (session gauge)
 
     private var sessionMeterCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.base) {
             HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("Session fuel")
                         .font(.system(size: 14, weight: .semibold))
                     Text(riskLabel)
@@ -158,7 +158,7 @@ struct FuelTabView: View {
                 }
                 Spacer()
                 if showsGauge {
-                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
                         Text("\(Int((remaining * 100).rounded()))")
                             .font(.system(size: 26, weight: .bold, design: .rounded).monospacedDigit())
                         Text("% left")
@@ -169,7 +169,7 @@ struct FuelTabView: View {
                 }
             }
 
-            VStack(spacing: 7) {
+            VStack(spacing: Spacing.sm) {
                 HStack {
                     Text("0%")
                     Spacer()
@@ -185,7 +185,7 @@ struct FuelTabView: View {
                     .opacity(isStale ? 0.9 : 1)
             }
         }
-        .padding(16)
+        .padding(Spacing.lg)
         .frame(maxWidth: .infinity)
         .background {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -212,7 +212,7 @@ struct FuelTabView: View {
     /// recoverable outage — names the reason and counts down to the next attempt.
     private var staleBanner: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            HStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: s.status == .rateLimited ? "hourglass" : "wifi.slash")
                     .font(.system(size: 9, weight: .bold))
                 Text(staleBannerText(now: context.date))
@@ -220,13 +220,13 @@ struct FuelTabView: View {
                     .lineLimit(1)
             }
             .foregroundStyle(Color(red: 0.98, green: 0.72, blue: 0.32))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.s)
             .background {
                 Capsule().fill(Color.black.opacity(0.55))
             }
             .overlay { Capsule().strokeBorder(Color.white.opacity(0.1), lineWidth: 1) }
-            .padding(.top, 8)
+            .padding(.top, Spacing.sm)
         }
     }
 
@@ -264,7 +264,7 @@ struct FuelTabView: View {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
             .fill(Color.black.opacity(0.5))
             .overlay {
-                VStack(spacing: 6) {
+                VStack(spacing: Spacing.s) {
                     Image(systemName: "bolt.slash.fill")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(Theme.secondaryText)
@@ -272,7 +272,7 @@ struct FuelTabView: View {
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal, Spacing.xl)
                 }
             }
     }
@@ -292,7 +292,7 @@ struct FuelTabView: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let now = context.date
             let blocks = settings.enabledFuelBlocks
-            VStack(spacing: 10) {
+            VStack(spacing: Spacing.md) {
                 if let featured = blocks.first {
                     bigSlot(featured, now: now)
                 }
@@ -329,10 +329,10 @@ struct FuelTabView: View {
         let r = readout(for: block, now: now)
         let cream = Color(red: 0.91, green: 0.90, blue: 0.87)
         let coral = Color(red: 0.93, green: 0.44, blue: 0.34)
-        return VStack(spacing: 9) {
-            HStack(spacing: 9) {
+        return VStack(spacing: Spacing.md) {
+            HStack(spacing: Spacing.md) {
                 // Identity tile — icon over the block's name, "Sat 09" style.
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: Spacing.s) {
                     Image(systemName: block.symbol)
                         .font(.system(size: 18, weight: .bold))
                     Spacer(minLength: 0)
@@ -344,20 +344,20 @@ struct FuelTabView: View {
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .padding(13)
+                .padding(Spacing.base)
                 .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.black))
 
                 // Instrument dial — ticks around the rim, a needle at the current level.
                 DialGauge(fraction: r.fraction)
                     .frame(maxHeight: .infinity)
-                    .padding(11)
+                    .padding(Spacing.base)
                     .frame(width: 104)
                     .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.black))
             }
             .frame(height: 80)
 
             // Headline strip — the big value, black digits on the accent.
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
                 Text(r.bigNumber)
                     .font(.system(size: 30, weight: .heavy, design: .rounded).monospacedDigit())
                     .lineLimit(1)
@@ -373,7 +373,7 @@ struct FuelTabView: View {
             .frame(height: 48)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(coral))
         }
-        .padding(10)
+        .padding(Spacing.md)
         .frame(maxWidth: .infinity)
         .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(cream))
     }
@@ -382,9 +382,9 @@ struct FuelTabView: View {
 
     private func smallGridView(_ blocks: [FuelBlock], now: Date) -> some View {
         let rows = gridRows(blocks)
-        return VStack(spacing: 10) {
+        return VStack(spacing: Spacing.md) {
             ForEach(rows.indices, id: \.self) { row in
-                HStack(spacing: 10) {
+                HStack(spacing: Spacing.md) {
                     ForEach(rows[row]) { slot in
                         smallSlotView(slot, now: now)
                     }
@@ -665,7 +665,7 @@ struct FuelTabView: View {
                         .foregroundStyle(Theme.isNoir ? Color.black : Color.white)
                         .frame(width: 18, height: 18)
                         .background(Circle().fill(accent))
-                        .padding(6)
+                        .padding(Spacing.s)
                 }
         } else if draggingBlock == block {
             shape.strokeBorder(accent.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
@@ -677,7 +677,7 @@ struct FuelTabView: View {
     @ViewBuilder
     private var dragAvatar: some View {
         if let block = draggingBlock {
-            HStack(spacing: 7) {
+            HStack(spacing: Spacing.sm) {
                 dragChip(block)
                 if let target = dropTarget, target != block {
                     Image(systemName: "arrow.left.arrow.right")
@@ -686,8 +686,8 @@ struct FuelTabView: View {
                     dragChip(target)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.sm)
             .background { Capsule().fill(Color.black.opacity(0.82)) }
             .overlay { Capsule().strokeBorder(accent.opacity(0.6), lineWidth: 1) }
             .shadow(color: .black.opacity(0.4), radius: 10, y: 4)
@@ -697,7 +697,7 @@ struct FuelTabView: View {
     }
 
     private func dragChip(_ block: FuelBlock) -> some View {
-        HStack(spacing: 5) {
+        HStack(spacing: Spacing.s) {
             Image(systemName: block.symbol)
                 .font(.system(size: 10, weight: .bold))
             Text(block.title)
@@ -831,8 +831,8 @@ private struct HeroStat: View {
     var showMeter: Bool = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 5) {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: symbol)
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(Theme.secondaryText)
@@ -840,7 +840,7 @@ private struct HeroStat: View {
                 Spacer(minLength: 0)
             }
             Spacer(minLength: 0)
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
                 Text(number)
                     .font(.system(size: 38, weight: .heavy, design: .rounded).monospacedDigit())
                     .foregroundStyle(.white)
@@ -860,8 +860,8 @@ private struct HeroStat: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
+        .padding(.horizontal, Spacing.base)
+        .padding(.vertical, Spacing.base)
     }
 }
 
@@ -873,7 +873,7 @@ private struct ModelStat: View {
     let fill: Color
 
     var body: some View {
-        VStack(spacing: 7) {
+        VStack(spacing: Spacing.sm) {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(fill)
@@ -884,8 +884,8 @@ private struct ModelStat: View {
             BlockLabel(text: label)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.base)
     }
 }
 
@@ -896,7 +896,7 @@ private struct AddBlockCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(spacing: Spacing.s) {
                 Image(systemName: "plus")
                     .font(.system(size: 15, weight: .bold))
                 Text("Add block")
@@ -905,7 +905,7 @@ private struct AddBlockCard: View {
             }
             .foregroundStyle(Theme.secondaryText)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, Spacing.lg)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

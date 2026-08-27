@@ -149,8 +149,8 @@ private struct AddTabGalleryCard: View {
     @State private var filter: NotchTab.Category?
     @FocusState private var searchFocused: Bool
 
-    private let columns = [GridItem(.flexible(), spacing: 8),
-                           GridItem(.flexible(), spacing: 8)]
+    private let columns = [GridItem(.flexible(), spacing: Spacing.sm),
+                           GridItem(.flexible(), spacing: Spacing.sm)]
     /// Fixed tile height, so the grid's visible height is exact math (no guessing
     /// around variable-height tiles).
     private let tileHeight: CGFloat = 56
@@ -174,14 +174,14 @@ private struct AddTabGalleryCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: Spacing.base) {
             searchField
             if presentCategories.count > 1 {
                 categoryChips
             }
             content
         }
-        .padding(14)
+        .padding(Spacing.lg)
         .frame(width: width)
         .background {
             let shape = RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -199,7 +199,7 @@ private struct AddTabGalleryCard: View {
     // MARK: - Search
 
     private var searchField: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.sm) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.6))
@@ -221,7 +221,7 @@ private struct AddTabGalleryCard: View {
                 .linkCursor()
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, Spacing.base)
         .frame(height: 38)
         .background {
             let shape = Capsule(style: .continuous)
@@ -234,13 +234,13 @@ private struct AddTabGalleryCard: View {
 
     private var categoryChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
                 chip(title: "All", symbol: "square.grid.2x2", isOn: filter == nil) { filter = nil }
                 ForEach(presentCategories) { cat in
                     chip(title: cat.title, symbol: cat.symbol, isOn: filter == cat) { filter = cat }
                 }
             }
-            .padding(.horizontal, 1)
+            .padding(.horizontal, Spacing.hair)
         }
     }
 
@@ -248,12 +248,12 @@ private struct AddTabGalleryCard: View {
         Button {
             withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) { action() }
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: symbol).font(.system(size: 10, weight: .semibold))
                 Text(title).font(.system(size: 12, weight: .semibold))
             }
             .foregroundStyle(isOn ? .black : .white.opacity(0.85))
-            .padding(.horizontal, 11)
+            .padding(.horizontal, Spacing.base)
             .frame(height: 28)
             .background {
                 Capsule(style: .continuous)
@@ -279,7 +279,7 @@ private struct AddTabGalleryCard: View {
                         AddTabTile(tab: tab, accent: settings.accent, height: tileHeight) { add(tab) }
                     }
                 }
-                .padding(.horizontal, 1)
+                .padding(.horizontal, Spacing.hair)
             }
             // Cap the grid to a few rows and let it scroll past that, so the card
             // stays compact no matter how many tabs exist.
@@ -296,7 +296,7 @@ private struct AddTabGalleryCard: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Spacing.s) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.4))
@@ -306,7 +306,7 @@ private struct AddTabGalleryCard: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
+        .padding(.vertical, Spacing.xxl)
     }
 
     // MARK: - Actions
@@ -335,7 +335,7 @@ private struct AddTabTile: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: Spacing.md) {
                 Image(systemName: tab.symbol)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
@@ -344,7 +344,7 @@ private struct AddTabTile: View {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(Color.white.opacity(0.12))
                     }
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: Spacing.hair) {
                     Text(tab.title)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white)
@@ -356,7 +356,7 @@ private struct AddTabTile: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 10)
+            .padding(.horizontal, Spacing.md)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .frame(height: height)
             .background {

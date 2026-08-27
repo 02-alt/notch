@@ -39,7 +39,7 @@ struct CollapsedMediaView: View {
     /// transfer and a running timer all take priority over (and can appear without)
     /// media, and a chosen resting stat fills the otherwise-idle pill.
     private var visible: Bool {
-        recorder.isRecording || vm.collapsedEvent != nil || vm.transferActive || timer.isActive || mediaVisible || restingReady
+        recorder.isRecording || vm.islandActivity != nil || vm.collapsedEvent != nil || vm.transferActive || timer.isActive || mediaVisible || restingReady || settings.dynamicIsland
     }
 
     /// Whether the chosen resting stat has a value to show yet (a live-source stat
@@ -81,6 +81,8 @@ struct CollapsedMediaView: View {
         HStack(spacing: 0) {
             if recorder.isRecording {
                 recordingPeek
+            } else if let activity = vm.islandActivity {
+                islandPeek(activity)
             } else if let event = vm.collapsedEvent {
                 // A transient notice (e.g. "Tokens refilled"): the notch briefly
                 // widens (see RootView.eventPeekSize) into a small banner — a tinted
@@ -94,7 +96,7 @@ struct CollapsedMediaView: View {
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .fixedSize()
-                    .padding(.leading, 7)
+                    .padding(.leading, Spacing.sm)
                 Spacer(minLength: hInset)
                 PulseDot(color: eventTint(event), diameter: art * 0.5)
             } else if vm.transferActive {
@@ -116,6 +118,11 @@ struct CollapsedMediaView: View {
                 } else {
                     SimpleEQ(animating: np.isPlaying, height: art * 0.78)
                 }
+            } else if settings.dynamicIsland {
+                // Persistent Dynamic Island: with nothing else happening the notch
+                // still reads as an always-on island — the time on the leading wing,
+                // battery (or the date) on the trailing, camera kept clear between.
+                islandResting
             } else if restingReady {
                 restingPeek
             }
@@ -127,7 +134,98 @@ struct CollapsedMediaView: View {
         .animation(.easeInOut(duration: 0.25), value: visible)
         .animation(.easeInOut(duration: 0.25), value: vm.transferActive)
         .animation(.easeInOut(duration: 0.25), value: vm.collapsedEvent)
+        .animation(.easeInOut(duration: 0.25), value: vm.islandActivity)
         .animation(.easeInOut(duration: 0.25), value: recorder.isRecording)
+        .animation(.easeInOut(duration: 0.25), value: settings.dynamicIsland)
+    }
+
+    /// The Dynamic Island's self-driven presentation. For a track change: album art
+    /// and the title/artist on the *leading* wing, a live EQ on the *trailing* wing,
+    /// with the camera cutout kept clear between them — the signature two-sided split.
+    /// The pill has already morphed wider (see `RootView.collapsedBodySize`) to give
+    /// the title room without ever crossing the camera.
+    @ViewBuilder private func islandPeek(_ activity: NotchViewModel.IslandActivity) -> some View {
+        switch activity.kind {
+        case .nowPlaying:
+            artwork
+            islandLabel(np.title, sub: np.artist)
+            Spacer(minLength: hInset)
+            SimpleEQ(animating: np.isPlaying, height: art * 0.78)
+
+        case .timerDone(let label):
+            ZStack {
+                Circle().fill(Color.green.opacity(0.16))
+                Image(systemName: "bell.fill")
+                    .font(.system(size: art * 0.5, weight: .bold))
+                    .foregroundStyle(Color.green)
+            }
+            .frame(width: art, height: art)
+            islandLabel(label.isEmpty ? "Timer" : label, sub: "Time's up")
+            Spacer(minLength: hInset)
+            PulseDot(color: Color(hex: "34C759") ?? .green, diameter: art * 0.5)
+
+        case .airDrop:
+            Image(systemName: "dot.radiowaves.up.forward")
+                .font(.system(size: art * 0.55, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.9))
+                .frame(width: art, height: art)
+            islandLabel("AirDrop", sub: "Receiving…")
+            Spacer(minLength: hInset)
+            AirDropSpinner(diameter: art)
+        }
+    }
+
+    /// The always-on Dynamic Island at rest: the time hugging the leading edge and
+    /// the battery (or, until the battery poll lands, the weekday + date) hugging the
+    /// trailing edge — the persistent two-sided glance that makes the notch *read* as
+    /// an island the moment the mode is switched on, before any activity fires.
+    @ViewBuilder private var islandResting: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { ctx in
+            Text(ctx.date, format: .dateTime.hour().minute())
+                .font(.system(size: art * 0.62, weight: .bold).monospacedDigit())
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .fixedSize()
+        }
+        Spacer(minLength: hInset)
+        if let charge = battery.charge {
+            HStack(spacing: Spacing.s) {
+                Text("\(Int((charge.fraction * 100).rounded()))%")
+                    .font(.system(size: art * 0.42, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(.white)
+                Image(systemName: charge.charging ? "bolt.fill" : "battery.100")
+                    .font(.system(size: art * 0.4, weight: .semibold))
+                    .foregroundStyle(charge.charging ? (Color(hex: "34C759") ?? .green) : .white.opacity(0.85))
+            }
+            .fixedSize()
+        } else {
+            TimelineView(.periodic(from: .now, by: 60)) { ctx in
+                Text(ctx.date, format: .dateTime.weekday(.abbreviated).day())
+                    .font(.system(size: art * 0.42, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+        }
+    }
+
+    /// A two-line leading label for the island — a bright title over a dimmer
+    /// subtitle, bounded to the leading wing so it can never reach across the camera.
+    @ViewBuilder private func islandLabel(_ title: String, sub: String) -> some View {
+        VStack(alignment: .leading, spacing: Spacing.hair) {
+            Text(title)
+                .font(.system(size: art * 0.34, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            if !sub.isEmpty {
+                Text(sub)
+                    .font(.system(size: art * 0.28, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: max(90, art * 3.2), alignment: .leading)
+        .padding(.leading, Spacing.sm)
     }
 
     /// A live recording's peek: a red REC glyph hugging the left edge and the
@@ -157,22 +255,41 @@ struct CollapsedMediaView: View {
     /// gauge/readout on the right, camera cutout kept clear between them — the same
     /// two-edge shape as the media and timer peeks.
     @ViewBuilder private var restingPeek: some View {
-        Image(systemName: restingSymbol)
-            .font(.system(size: art * 0.5, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.9))
-            .frame(width: art, height: art)
-        Spacer(minLength: hInset)
-        restingValue
-            .frame(height: art)
+        if settings.collapsedResting == .fuel, let used = fuel.sessionUsed {
+            // Fuel mirrors ClaudeFuel's menu-bar item: a round "tank" gauge hugging the
+            // left edge, and a compact readout on the right that rotates through the
+            // stats — anchored on the session refill countdown, with % left, credits
+            // and the weekly reset cycling in (see `fuelReadout`).
+            FuelTank(fraction: max(0, 1 - used), color: fuelHealth(max(0, 1 - used)), size: art * 0.62)
+            Spacer(minLength: hInset)
+            fuelReadout
+                .frame(height: art)
+        } else {
+            Image(systemName: restingSymbol)
+                .font(.system(size: art * 0.5, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.9))
+                .frame(width: art, height: art)
+            Spacer(minLength: hInset)
+            restingValue
+                .frame(height: art)
+        }
     }
 
     @ViewBuilder private var restingValue: some View {
         switch settings.collapsedResting {
         case .fuel:
+            // Compact glance used alongside now-playing media (right edge only): the
+            // tank gauge with the % left beside it, no rotation.
             if let used = fuel.sessionUsed {
                 let remaining = max(0, 1 - used)
-                MiniGauge(fraction: remaining, label: "\(Int((remaining * 100).rounded()))",
-                          color: fuelHealth(remaining), size: art)
+                HStack(spacing: art * 0.24) {
+                    FuelTank(fraction: remaining, color: fuelHealth(remaining), size: art * 0.62)
+                    Text("\(Int((remaining * 100).rounded()))%")
+                        .font(.system(size: art * 0.38, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
             }
         case .battery:
             if let charge = battery.charge {
@@ -190,6 +307,94 @@ struct CollapsedMediaView: View {
         case .none:
             EmptyView()
         }
+    }
+
+    /// The rotating right-edge readout for the resting fuel peek — the notch's take on
+    /// ClaudeFuel's menu-bar text. There's only room for one short string beside the
+    /// tank, so it cycles: the **session refill countdown** is the anchor (shown every
+    /// other slot, so it's the thing you mostly see), with **% left**, the live
+    /// **credits** spend (only once you're on credits), and the **weekly reset** (only
+    /// once the weekly limit is reached) rotating through between its turns.
+    private var fuelReadout: some View {
+        // Tick every second: the countdown text needs it, and the ~3s card rotation is
+        // derived from absolute time so it never jumps when the view redraws.
+        TimelineView(.periodic(from: .now, by: 1)) { ctx in
+            let cards = fuelCards
+            let idx = cards.isEmpty ? 0
+                : Int(ctx.date.timeIntervalSinceReferenceDate / 3) % cards.count
+            let card = cards.isEmpty ? FuelCard.percent(fuel.sessionUsed.map { 1 - $0 } ?? 0)
+                                     : cards[idx]
+            Text(fuelText(card, now: ctx.date))
+                .font(.system(size: art * 0.38, weight: .semibold).monospacedDigit())
+                .foregroundStyle(fuelTint(card))
+                .lineLimit(1)
+                // Wide readouts (credits, the weekly Nd Hh) shrink to fit the bare
+                // notch rather than overflow toward the camera cutout; the frame keeps
+                // the text hugging the right edge, mirroring the left-edge tank.
+                .minimumScaleFactor(0.4)
+                .frame(maxWidth: art * 3.4, alignment: .trailing)
+                .contentTransition(.numericText())
+                .animation(.easeInOut(duration: 0.25), value: fuelText(card, now: ctx.date))
+        }
+    }
+
+    /// One readout the fuel peek can rotate to.
+    private enum FuelCard: Equatable {
+        case reset(Date)      // session refill countdown (↻) — the anchor
+        case percent(Double)  // fuel left, 0…1
+        case credits          // extra-usage spend (⚡)
+        case weekly(Date)     // weekly reset countdown, only once the week maxes out
+    }
+
+    /// The cards to cycle through, given what data we have. The reset countdown is
+    /// interleaved between every other card so it stays the dominant readout.
+    private var fuelCards: [FuelCard] {
+        var extras: [FuelCard] = []
+        if let used = fuel.sessionUsed { extras.append(.percent(max(0, 1 - used))) }
+        if fuel.creditsUsed != nil { extras.append(.credits) }
+        // "Weekly limit reached": the weekly window is essentially maxed out.
+        if let week = fuel.weekUsed, week >= 0.99, fuel.weekResetsAt != nil {
+            extras.append(.weekly(fuel.weekResetsAt!))
+        }
+        guard let reset = fuel.sessionResetsAt else { return extras }
+        // Interleave: [reset, percent, reset, credits, reset, weekly, …]
+        return extras.flatMap { [FuelCard.reset(reset), $0] }
+    }
+
+    private func fuelText(_ card: FuelCard, now: Date) -> String {
+        switch card {
+        case .reset(let at):
+            return "↻ " + Self.shortClock(max(0, at.timeIntervalSince(now)))
+        case .percent(let left):
+            return "\(Int((left * 100).rounded()))%"
+        case .credits:
+            let amount = fuel.creditsUsed ?? 0
+            return "⚡\(fuel.creditsSymbol)\(String(format: "%.2f", amount))"
+        case .weekly(let at):
+            return "7d ↻ " + Self.weekClock(max(0, at.timeIntervalSince(now)))
+        }
+    }
+
+    private func fuelTint(_ card: FuelCard) -> Color {
+        switch card {
+        case .credits: return Color(hex: "0A84FF") ?? .blue
+        case .weekly:  return Color(hex: "FF453A") ?? .red
+        default:       return .white
+        }
+    }
+
+    /// A short session countdown: `h:mm` past an hour, else `m:ss`.
+    private static func shortClock(_ secs: TimeInterval) -> String {
+        let s = Int(secs), h = s / 3600, m = (s % 3600) / 60
+        if h > 0 { return "\(h):\(String(format: "%02d", m))" }
+        return "\(m):\(String(format: "%02d", s % 60))"
+    }
+
+    /// A weekly countdown: `Nd Hh` past a day, else the short `h:mm`.
+    private static func weekClock(_ secs: TimeInterval) -> String {
+        let s = Int(secs), d = s / 86400, h = (s % 86400) / 3600
+        if d > 0 { return "\(d)d \(h)h" }
+        return shortClock(secs)
     }
 
     /// Fuel "% left" gauge color: green with headroom, amber as it tightens, red
@@ -260,6 +465,34 @@ struct CollapsedMediaView: View {
     }
 }
 
+/// A small round "fuel tank" — a circle filled from the bottom to `fraction` in the
+/// health color, mirroring ClaudeFuel's menu-bar gauge. The number lives *beside* it
+/// (in the rotating readout), so the tank itself stays a clean, label-free glance.
+private struct FuelTank: View {
+    /// Fuel remaining, 0…1.
+    let fraction: Double
+    let color: Color
+    let size: CGFloat
+
+    var body: some View {
+        let f = max(0, min(1, fraction))
+        Circle()
+            .fill(Color.white.opacity(0.14))
+            .overlay(
+                GeometryReader { geo in
+                    Rectangle()
+                        .fill(color)
+                        .frame(height: geo.size.height * CGFloat(f))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                }
+                .clipShape(Circle())
+            )
+            .overlay(Circle().strokeBorder(Color.white.opacity(0.6), lineWidth: max(1, size * 0.08)))
+            .frame(width: size, height: size)
+            .animation(.easeInOut(duration: 0.4), value: f)
+    }
+}
+
 /// A tiny ring gauge with a centered percentage, used for the collapsed pill's
 /// resting fuel / battery glance. The ring depletes clockwise from the top and the
 /// number reads the same value, so it's legible at notch scale without a label.
@@ -320,7 +553,7 @@ private struct SimpleEQ: View {
 
     /// Real spectrum: one bar per frequency band, heights straight from the FFT.
     private var reactiveBars: some View {
-        HStack(alignment: .center, spacing: 2) {
+        HStack(alignment: .center, spacing: Spacing.hair) {
             ForEach(audio.bands.indices, id: \.self) { i in
                 Capsule()
                     .fill(.white.opacity(0.9))
@@ -352,7 +585,7 @@ private struct SimpleEQ: View {
             // A sharp, periodic pulse (raised sine) that punches all bars together
             // like a kick drum, on top of each bar's own flicker.
             let beat = pow(max(0, sin(t * 2.6)), 8)
-            HStack(alignment: .center, spacing: 2) {
+            HStack(alignment: .center, spacing: Spacing.hair) {
                 ForEach(bars.indices, id: \.self) { i in
                     Capsule()
                         .fill(.white.opacity(0.9))
@@ -382,19 +615,28 @@ private struct SimpleEQ: View {
 struct PulseDot: View {
     let color: Color
     let diameter: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate
-            let pulse = 0.5 + 0.5 * sin(t * 3.2)
+        if reduceMotion {
+            // Reduce Motion: a steady beacon — present, but no breathing pulse.
             Circle()
                 .fill(color)
                 .frame(width: diameter, height: diameter)
-                .scaleEffect(0.7 + 0.3 * pulse)
-                .opacity(0.55 + 0.45 * pulse)
-                .shadow(color: color.opacity(0.6 * pulse), radius: diameter * 0.4)
+                .shadow(color: color.opacity(0.5), radius: diameter * 0.35)
+        } else {
+            TimelineView(.animation) { ctx in
+                let t = ctx.date.timeIntervalSinceReferenceDate
+                let pulse = 0.5 + 0.5 * sin(t * 3.2)
+                Circle()
+                    .fill(color)
+                    .frame(width: diameter, height: diameter)
+                    .scaleEffect(0.7 + 0.3 * pulse)
+                    .opacity(0.55 + 0.45 * pulse)
+                    .shadow(color: color.opacity(0.6 * pulse), radius: diameter * 0.4)
+            }
+            .frame(width: diameter, height: diameter)
         }
-        .frame(width: diameter, height: diameter)
     }
 }
 

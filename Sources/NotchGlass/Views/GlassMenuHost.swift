@@ -154,7 +154,7 @@ private struct GlassMenuColumn: View {
     @State private var closeWork: DispatchWorkItem?
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: Spacing.hair) {
             ForEach(items) { item in
                 row(for: item)
             }
@@ -256,7 +256,7 @@ private struct GlassMenuRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: Spacing.base) {
                 if let systemImage {
                     Image(systemName: systemImage)
                         .font(.system(size: 13, weight: .semibold))
@@ -277,7 +277,7 @@ private struct GlassMenuRow: View {
                 }
             }
             .foregroundStyle(foreground)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, Spacing.md)
             .frame(height: 38)
             .frame(maxWidth: .infinity)
             .background {

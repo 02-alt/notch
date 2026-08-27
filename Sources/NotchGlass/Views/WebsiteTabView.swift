@@ -30,9 +30,9 @@ private struct TopLevelView: View {
     @State private var isDropTargeted = false
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+                HStack(spacing: Spacing.md) {
                     ForEach(vm.websiteFolders) { folder in
                         FolderTile(folder: folder) {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
@@ -58,7 +58,7 @@ private struct TopLevelView: View {
                     newFolderTile
                     addSiteTile
                 }
-                .padding(.horizontal, 2)
+                .padding(.horizontal, Spacing.hair)
                 .frame(maxHeight: .infinity)
             }
             .overlay {
@@ -96,7 +96,7 @@ private struct TopLevelView: View {
 
     private func tile(icon: String, label: String, tint: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 Image(systemName: icon)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(tint)
@@ -177,8 +177,8 @@ private struct FolderDetailView: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 8) {
+        VStack(spacing: Spacing.md) {
+            HStack(spacing: Spacing.sm) {
                 Button {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         vm.openFolderID = nil
@@ -222,7 +222,7 @@ private struct FolderDetailView: View {
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+                HStack(spacing: Spacing.md) {
                     ForEach(folder?.sites ?? []) { site in
                         WebsiteTile(site: site, folders: []) {
                             open(site)
@@ -232,7 +232,7 @@ private struct FolderDetailView: View {
                     }
                     addTile
                 }
-                .padding(.horizontal, 2)
+                .padding(.horizontal, Spacing.hair)
                 .frame(maxHeight: .infinity)
             }
             .overlay {
@@ -296,7 +296,7 @@ private struct FolderTile: View {
 
     var body: some View {
         Button(action: open) {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(settings.accent.opacity(isTargeted ? 0.4 : 0.18))
@@ -337,7 +337,7 @@ private struct FolderTile: View {
                 Text("\(folder.sites.count)")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 5).padding(.vertical, 2)
+                    .padding(.horizontal, Spacing.s).padding(.vertical, Spacing.hair)
                     .background(Capsule().fill(Color.black.opacity(0.5)))
                     .offset(x: 6, y: 6)
             }
@@ -377,7 +377,7 @@ private struct WebsiteTile: View {
 
     var body: some View {
         Button(action: open) {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Theme.line(0.08))
@@ -454,7 +454,7 @@ private struct AddSiteField: View {
     let commit: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Spacing.sm) {
             Image(systemName: "globe")
                 .foregroundStyle(Theme.secondaryText)
             TextField("Add a website (e.g. apple.com)", text: $text)
@@ -468,8 +468,8 @@ private struct AddSiteField: View {
                 .foregroundStyle(settings.accent)
                 .notchHover(scale: 1.08)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, Spacing.base)
+        .padding(.vertical, Spacing.sm)
         .innerCard(cornerRadius: 12)
     }
 }

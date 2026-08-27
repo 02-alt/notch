@@ -61,6 +61,15 @@ final class SettingsStore: ObservableObject {
         didSet { defaults.set(collapsedShowsFuelEvents, forKey: "set.collapsedShowsFuelEvents") }
     }
 
+    /// Dynamic Island mode: the closed notch auto-expands *on its own* when a live
+    /// activity starts (a new track, a timer, an AirDrop) — briefly morphing into a
+    /// two-slot presentation that hugs the camera, then settling back. Off by
+    /// default; it's a distinct, more attention-grabbing behaviour than the quiet
+    /// resting peeks, so it's opt-in. See ``NotchViewModel/presentIsland(_:for:)``.
+    @Published var dynamicIsland: Bool {
+        didSet { defaults.set(dynamicIsland, forKey: "set.dynamicIsland") }
+    }
+
     /// The quiet stat shown on the collapsed pill's right edge when nothing else is
     /// happening (see ``CollapsedResting``). `.fuel` / `.battery` spin up a slow
     /// background reader; `.none` keeps the plain-black resting pill.
@@ -195,6 +204,7 @@ final class SettingsStore: ObservableObject {
         showArtwork = defaults.object(forKey: "set.showArtwork") as? Bool ?? true
         collapsedShowsMedia = defaults.object(forKey: "set.collapsedShowsMedia") as? Bool ?? true
         collapsedShowsFuelEvents = defaults.object(forKey: "set.collapsedShowsFuelEvents") as? Bool ?? false
+        dynamicIsland = defaults.object(forKey: "set.dynamicIsland") as? Bool ?? false
         collapsedResting = CollapsedResting(rawValue: defaults.string(forKey: "set.collapsedResting") ?? "") ?? .none
         defaultTab = NotchTab(rawValue: defaults.string(forKey: "set.defaultTab") ?? "") ?? .media
         if let raw = defaults.array(forKey: "set.enabledTabs") as? [String] {

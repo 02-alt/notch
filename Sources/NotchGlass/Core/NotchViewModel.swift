@@ -8,7 +8,7 @@ final class NotchViewModel: ObservableObject {
     @Published var isOpen = false {
         didSet {
             if !isOpen { flushPendingPersists() }
-            else { maybePresentWhatsNew() }
+            else { maybePresentWhatsNew(); dismissIsland() }
         }
     }
     @Published var selectedTab: NotchTab = .media
@@ -94,6 +94,76 @@ final class NotchViewModel: ObservableObject {
         }
         collapsedEventWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + duration, execute: work)
+    }
+
+    // MARK: - Dynamic Island
+
+    /// A live activity presented by the Dynamic Island: the closed pill morphs open
+    /// on its own (no hover) into a two-slot layout hugging the camera, holds, then
+    /// settles back. This is the seed of the prioritised "Activity" queue — for now
+    /// a single presentation at a time, highest-priority trigger wins.
+    struct IslandActivity: Equatable {
+        enum Kind: Equatable {
+            /// A track just started — art on the leading wing, EQ on the trailing.
+            case nowPlaying
+            /// A countdown reached zero — bell + "Time's up", tinted with the label.
+            case timerDone(label: String)
+            /// An AirDrop file just landed — radiowaves + the transfer orb.
+            case airDrop
+        }
+        var kind: Kind
+
+        /// How long this activity holds expanded before it settles back. A finished
+        /// timer lingers a beat longer since it's a "you asked for this" alert.
+        var duration: TimeInterval {
+            switch kind {
+            case .nowPlaying: return 3.5
+            case .timerDone:  return 5
+            case .airDrop:    return 4
+            }
+        }
+
+        /// Higher wins when two activities contend for the pill at once. A finished
+        /// timer is an explicit alert, so it outranks a passive track change.
+        var priority: Int {
+            switch kind {
+            case .timerDone: return 3
+            case .airDrop:   return 2
+            case .nowPlaying: return 1
+            }
+        }
+    }
+
+    /// The Dynamic-Island activity currently morphed open on the closed pill, if any.
+    /// Drives the widened `collapsedBodySize` and the island branch in
+    /// `CollapsedMediaView`. Auto-cleared by `presentIsland`.
+    @Published var islandActivity: IslandActivity?
+    private var islandWork: DispatchWorkItem?
+
+    /// Auto-expands the closed pill into the Island presentation, then settles it back
+    /// after the activity's own `duration`. No-ops when the mode is off or the panel
+    /// is already open (an activity that fires mid-interaction shouldn't yank the panel
+    /// around). A currently-showing activity of *higher* priority isn't interrupted by
+    /// a lower one; otherwise the newcomer takes over and re-arms the settle timer, so
+    /// a run of track changes reads as one sustained island.
+    func presentIsland(_ activity: IslandActivity) {
+        guard SettingsStore.shared.dynamicIsland, !isOpen else { return }
+        if let current = islandActivity, current.priority > activity.priority { return }
+        islandWork?.cancel()
+        withAnimation(Metrics.islandExpand) { islandActivity = activity }
+        let work = DispatchWorkItem { [weak self] in
+            withAnimation(Metrics.islandSettle) { self?.islandActivity = nil }
+        }
+        islandWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + activity.duration, execute: work)
+    }
+
+    /// Snaps the island shut immediately (e.g. the panel is being opened by hover, so
+    /// the auto-expansion shouldn't linger behind the full panel).
+    func dismissIsland() {
+        islandWork?.cancel()
+        islandWork = nil
+        if islandActivity != nil { islandActivity = nil }
     }
 
     /// True when the panel is welded to a real display notch. When false it floats
@@ -545,7 +615,10 @@ final class NotchViewModel: ObservableObject {
     private var pointerOverNotch: Bool {
         guard let screen = notchScreen else { return true }
         let fromTop = screen.frame.maxY - NSEvent.mouseLocation.y
-        let band = max(collapsedSize.height, 1) + Metrics.collapsedTriggerSlack
+        // The floating Dynamic Island hangs below the top edge, so the trigger band
+        // has to reach past the gap + its slightly taller body to stay hoverable.
+        let islandExtra = SettingsStore.shared.dynamicIsland ? Metrics.islandFloatGap + 14 : 0
+        let band = max(collapsedSize.height, 1) + Metrics.collapsedTriggerSlack + islandExtra
         return fromTop >= 0 && fromTop <= band
     }
 

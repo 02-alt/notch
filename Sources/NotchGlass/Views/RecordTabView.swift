@@ -32,7 +32,7 @@ struct RecordTabView: View {
                 recordingScreen
                     .transition(.opacity)
             } else {
-                VStack(spacing: 12) {
+                VStack(spacing: Spacing.base) {
                     modeSwitch
                     scopeRow
                 }
@@ -46,12 +46,12 @@ struct RecordTabView: View {
     // MARK: - Mode switch
 
     private var modeSwitch: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.xs) {
             ForEach(Mode.allCases) { m in
                 Button {
                     mode = m
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: Spacing.s) {
                         Image(systemName: m.symbol)
                             .font(.system(size: 12, weight: .semibold))
                         Text(m.title)
@@ -72,7 +72,7 @@ struct RecordTabView: View {
                 .linkCursor()
             }
         }
-        .padding(4)
+        .padding(Spacing.xs)
         .innerCard(cornerRadius: 19)
     }
 
@@ -81,7 +81,7 @@ struct RecordTabView: View {
     /// The three capture scopes. Same row under both modes; the mode only changes
     /// what each tile *does* (and its subtitle / accent).
     private var scopeRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.base) {
             scopeTile(.region)
             scopeTile(.window)
             scopeTile(.full)
@@ -138,7 +138,7 @@ struct RecordTabView: View {
         return Button {
             fire(scope)
         } label: {
-            VStack(spacing: 7) {
+            VStack(spacing: Spacing.sm) {
                 Image(systemName: scope.symbol)
                     .font(.system(size: 25, weight: .regular))
                     .foregroundStyle(recording ? accent : Theme.primaryText)
@@ -165,7 +165,7 @@ struct RecordTabView: View {
         Button {
             recorder.stopRecording()
         } label: {
-            VStack(spacing: 14) {
+            VStack(spacing: Spacing.lg) {
                 ZStack {
                     Circle()
                         .fill(Color(hex: "FF453A") ?? .red)
@@ -198,8 +198,8 @@ struct RecordTabView: View {
     private var elapsedLabel: some View {
         TimelineView(.periodic(from: .now, by: 0.5)) { ctx in
             let elapsed = recorder.startDate.map { ctx.date.timeIntervalSince($0) } ?? 0
-            VStack(spacing: 3) {
-                HStack(spacing: 5) {
+            VStack(spacing: Spacing.xs) {
+                HStack(spacing: Spacing.s) {
                     PulseDot(color: Color(hex: "FF453A") ?? .red, diameter: 7)
                     Text("REC")
                         .font(.system(size: 10, weight: .heavy))

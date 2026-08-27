@@ -9,9 +9,9 @@ struct AmbientTabView: View {
     @EnvironmentObject private var settings: SettingsStore
 
     var body: some View {
-        VStack(spacing: 14) {
-            GlassEffectContainer(spacing: 10) {
-                HStack(spacing: 10) {
+        VStack(spacing: Spacing.lg) {
+            GlassEffectContainer(spacing: Spacing.md) {
+                HStack(spacing: Spacing.md) {
                     ForEach(AmbientScene.allCases) { scene in
                         SceneTile(scene: scene,
                                   isSelected: vm.ambientScene == scene,
@@ -44,7 +44,7 @@ private struct SceneTile: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 Image(systemName: scene.symbol)
                     .font(.system(size: 20, weight: .semibold))
                 Text(scene.title)
@@ -88,7 +88,7 @@ private struct VolumeRow: View {
     let accent: Color
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Spacing.base) {
             Image(systemName: "speaker.fill")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Theme.secondaryText)

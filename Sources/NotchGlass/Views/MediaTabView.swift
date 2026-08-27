@@ -17,17 +17,47 @@ struct MediaTabView: View {
     /// The live tint: the album colour when we have one, else the user's accent.
     private var tint: Color { cover ?? settings.accent }
 
+    /// On the Liquid Glass theme we let the panel's Siri-glass hood be the player's
+    /// surface — no opaque card — so the desktop refracts through and the album colour
+    /// blooms *into* the glass. Every other theme keeps the immersive album card.
+    private var isGlass: Bool { settings.panelTheme == .glass }
+
     var body: some View {
         ZStack {
-            backdrop
-            // The smoked "black Liquid Glass" surface, laid over the immersive album
-            // backdrop: the artwork lenses faintly through the glass (like the
-            // wallpaper behind Apple's Siri overlay) while the card reads as deep
-            // black glass with a light-catching rim.
-            Color.clear.blackGlass(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            if !isGlass {
+                backdrop
+                // The smoked "black Liquid Glass" surface, laid over the immersive album
+                // backdrop: the artwork lenses faintly through the glass (like the
+                // wallpaper behind Apple's Siri overlay) while the card reads as deep
+                // black glass with a light-catching rim.
+                Color.clear.blackGlass(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            }
+            // On the Liquid Glass theme the player sits *directly* on the panel's Siri
+            // hood — no album bloom, no floor gradient, no inset frosted card behind it.
+            // The hood is opaque black up top and fully clear at the bottom, so the
+            // player reads as content floating on real glass with a 100% transparent
+            // lower edge, exactly like the iPhone Siri overlay.
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Picture-in-Picture (browser video only) floats in the corner so it never
+        // unbalances the symmetric control row.
+        .overlay(alignment: .topTrailing) {
+            if np.supportsPiP {
+                Button { np.togglePiP() } label: {
+                    Image(systemName: "pip.enter")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .blackGlass(in: Circle(), interactive: true)
+                .linkCursor()
+                .help("Picture in Picture")
+                .padding(Spacing.md)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         // Recompute the palette whenever the artwork changes (new track).
         .task(id: np.artwork) { cover = np.artwork.flatMap(AlbumPalette.dominant) }
@@ -75,12 +105,19 @@ struct MediaTabView: View {
     // MARK: - Foreground content
 
     private var content: some View {
-        HStack(spacing: 16) {
-            if settings.showArtwork {
-                artwork
+        HStack(alignment: .top, spacing: Spacing.lg) {
+            // Left column: the cover, with the running-source chips tucked into the
+            // space beneath it (freed up now that the cover top-aligns to the title).
+            if settings.showArtwork || np.runningSources.count > 1 {
+                VStack(alignment: .leading, spacing: Spacing.md) {
+                    if settings.showArtwork { artwork }
+                    sourcePicker
+                    Spacer(minLength: 0)
+                }
+                .frame(width: settings.showArtwork ? 108 : nil, alignment: .leading)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(np.title.uppercased())
                     .font(.system(size: 14, weight: .heavy))
                     .foregroundStyle(.white)
@@ -115,7 +152,7 @@ struct MediaTabView: View {
                 controls
             }
         }
-        .padding(16)
+        .padding(Spacing.lg)
     }
 
     /// The crisp cover floating over its own blur, with a soft drop shadow so it
@@ -146,7 +183,7 @@ struct MediaTabView: View {
     /// Replaces the scrubber + time row for live streams: a pulsing red "LIVE" badge
     /// (there's nothing to seek), with the elapsed listening time trailing when known.
     private var liveIndicator: some View {
-        HStack(spacing: 7) {
+        HStack(spacing: Spacing.sm) {
             LivePulse()
             Text("LIVE")
                 .font(.system(size: 11, weight: .heavy))
@@ -163,64 +200,56 @@ struct MediaTabView: View {
         .frame(height: 14)
     }
 
+    /// The transport row: previous / play / next kept tight in the centre (like Apple
+    /// Music), with the volume glyph out at the right edge. The source pickers now live
+    /// under the cover, so this row is just about playback.
     private var controls: some View {
         ZStack {
-            // Transport, centered — disabled when nothing is playing. Live streams get
-            // just play/pause, since there's no previous/next track to skip to.
-            GlassEffectContainer(spacing: 14) {
-                HStack(spacing: 14) {
-                    if !np.isLive {
-                        TransportButton(symbol: "backward.fill", diameter: 32, accent: tint) { np.previous() }
-                    }
-                    TransportButton(symbol: np.isPlaying ? "pause.fill" : "play.fill",
-                                    diameter: 40, prominent: true, accent: tint) { np.playPause() }
-                    if !np.isLive {
-                        TransportButton(symbol: "forward.fill", diameter: 32, accent: tint) { np.next() }
-                    }
+            HStack(spacing: Spacing.lg) {
+                if !np.isLive {
+                    TransportButton(symbol: "backward.fill", diameter: 30, accent: tint) { np.previous() }
+                        .disabled(!np.hasTrack).opacity(np.hasTrack ? 1 : 0.4)
+                }
+                TransportButton(symbol: np.isPlaying ? "pause.fill" : "play.fill",
+                                diameter: 42, prominent: true, accent: tint) { np.playPause() }
+                    .disabled(!np.hasTrack).opacity(np.hasTrack ? 1 : 0.4)
+                if !np.isLive {
+                    TransportButton(symbol: "forward.fill", diameter: 30, accent: tint) { np.next() }
+                        .disabled(!np.hasTrack).opacity(np.hasTrack ? 1 : 0.4)
                 }
             }
-            .disabled(!np.hasTrack)
-            .opacity(np.hasTrack ? 1 : 0.4)
-
-            // Source picker, leading — always tappable so you can switch apps.
-            if np.runningSources.count > 1 {
-                HStack(spacing: 6) {
-                    GlassEffectContainer(spacing: 6) {
-                        HStack(spacing: 6) {
-                            ForEach(np.runningSources, id: \.self) { src in
-                                SourceChip(source: src,
-                                           isActive: np.activeSource == src,
-                                           accent: tint) { np.select(src) }
-                            }
-                        }
-                    }
-                    Spacer()
-                }
-            }
-
-            // Utilities, trailing — the volume slider and (for browser video) a
-            // Picture-in-Picture toggle. Each appears only when the source supports it.
-            HStack(spacing: 12) {
+            // Volume pinned to the right without shifting the centred transport.
+            HStack {
                 Spacer()
-                if np.supportsPiP {
-                    Button { np.togglePiP() } label: {
-                        Image(systemName: "pip.enter")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 26, height: 26)
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .blackGlass(in: Circle(), interactive: true)
-                    .linkCursor()
-                    .help("Picture in Picture")
-                }
-                if np.supportsVolume {
-                    VolumeControl(tint: tint)
-                }
+                volumeControl
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// The running-source pickers, tucked under the cover: one app-icon chip per open
+    /// player (Music, Spotify, a browser…), the active one highlighted — tap to switch.
+    /// Only shown when more than one player is open (nothing to pick between otherwise).
+    @ViewBuilder private var sourcePicker: some View {
+        if np.runningSources.count > 1 {
+            HStack(spacing: Spacing.sm) {
+                ForEach(np.runningSources, id: \.self) { src in
+                    SourceChip(source: src, isActive: np.activeSource == src, accent: tint) {
+                        np.select(src)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Far-right glyph: the volume speaker. Click toggles mute; hovering reveals a
+    /// slim slider just above it for fine control (kept off the row so it stays tidy).
+    @ViewBuilder private var volumeControl: some View {
+        if np.supportsVolume {
+            VolumeButton(tint: tint)
+        } else {
+            Color.clear.frame(width: 30, height: 30)
+        }
     }
 
     static func time(_ seconds: Double) -> String {
@@ -280,7 +309,8 @@ enum AlbumPalette {
     }
 }
 
-/// A tappable app-icon chip used to pick which media app drives playback.
+/// A tappable app-icon chip used to pick which media app drives playback — shown in
+/// a small row under the cover when more than one player is running.
 private struct SourceChip: View {
     let source: MediaSource
     let isActive: Bool
@@ -295,11 +325,11 @@ private struct SourceChip: View {
                 } else {
                     Image(systemName: "music.note")
                         .resizable().scaledToFit()
-                        .foregroundStyle(.white).padding(4)
+                        .foregroundStyle(.white).padding(Spacing.xs)
                 }
             }
             .frame(width: 18, height: 18)
-            .padding(5)
+            .padding(Spacing.s)
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
@@ -321,28 +351,44 @@ private struct SourceChip: View {
 /// The pulsing red dot that fronts the "LIVE" badge — a broadcast-style beacon that
 /// breathes so a live stream reads as live at a glance.
 private struct LivePulse: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        TimelineView(.animation) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate
-            let pulse = 0.5 + 0.5 * sin(t * 3.2)
+        if reduceMotion {
+            // Reduce Motion: a steady dot — still reads as "live", but doesn't breathe.
             Circle()
                 .fill(Color.red)
                 .frame(width: 8, height: 8)
-                .scaleEffect(0.8 + 0.2 * pulse)
-                .opacity(0.6 + 0.4 * pulse)
-                .shadow(color: .red.opacity(0.7 * pulse), radius: 4)
+                .shadow(color: .red.opacity(0.6), radius: 3)
+        } else {
+            TimelineView(.animation) { ctx in
+                let t = ctx.date.timeIntervalSinceReferenceDate
+                let pulse = 0.5 + 0.5 * sin(t * 3.2)
+                Circle()
+                    .fill(Color.red)
+                    .frame(width: 8, height: 8)
+                    .scaleEffect(0.8 + 0.2 * pulse)
+                    .opacity(0.6 + 0.4 * pulse)
+                    .shadow(color: .red.opacity(0.7 * pulse), radius: 4)
+            }
+            .frame(width: 8, height: 8)
         }
-        .frame(width: 8, height: 8)
     }
 }
 
-/// The trailing volume control: a mute-toggle speaker glyph whose waves track the
-/// level, plus a compact draggable slider tinted to the album colour.
-private struct VolumeControl: View {
+/// The far-right volume glyph: a mute-toggle speaker whose waves track the level.
+/// A slim draggable slider (tinted to the album colour) reveals just above it on
+/// hover, so fine control is available without widening the symmetric control row.
+private struct VolumeButton: View {
     @EnvironmentObject private var np: NowPlayingManager
     let tint: Color
     /// Level to restore when un-muting via the speaker glyph.
     @State private var preMute: Double = 0.5
+    /// Hover is tracked on both the glyph and the popover (which sit flush) so moving
+    /// the pointer from one to the other keeps the slider up.
+    @State private var overGlyph = false
+    @State private var overSlider = false
+    private var shown: Bool { overGlyph || overSlider }
 
     private var symbol: String {
         if np.volume <= 0.001 { return "speaker.slash.fill" }
@@ -352,24 +398,37 @@ private struct VolumeControl: View {
     }
 
     var body: some View {
-        HStack(spacing: 7) {
-            Button {
-                if np.volume > 0.001 { preMute = np.volume; np.setVolume(0) }
-                else { np.setVolume(preMute > 0.02 ? preMute : 0.5) }
-            } label: {
-                Image(systemName: symbol)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .frame(width: 18, alignment: .leading)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .linkCursor()
-            .help(np.volume > 0.001 ? "Mute" : "Unmute")
-
-            VolumeSlider(tint: tint).frame(width: 66)
+        Button {
+            if np.volume > 0.001 { preMute = np.volume; np.setVolume(0) }
+            else { np.setVolume(preMute > 0.02 ? preMute : 0.5) }
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .contentShape(Circle())
         }
-        .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
+        .buttonStyle(.plain)
+        .blackGlass(in: Circle(), interactive: true)
+        .linkCursor()
+        .help(np.volume > 0.001 ? "Mute" : "Unmute")
+        .onHover { overGlyph = $0 }
+        .overlay(alignment: .bottom) {
+            VolumeSlider(tint: tint)
+                .frame(width: 96, height: 14)
+                .padding(.horizontal, Spacing.base)
+                .padding(.vertical, Spacing.sm)
+                .background(Capsule(style: .continuous).fill(Color.black.opacity(0.82)))
+                .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
+                .fixedSize()
+                // Sits flush on top of the glyph so the pointer can cross into it.
+                .offset(y: -30)
+                .opacity(shown ? 1 : 0)
+                .allowsHitTesting(shown)
+                .onHover { overSlider = $0 }
+        }
+        .animation(.easeOut(duration: 0.14), value: shown)
+        .zIndex(shown ? 10 : 0)
     }
 }
 
@@ -635,7 +694,7 @@ private struct ScrubTooltip: View {
     let time: String
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s) {
             if let chapter {
                 Text(chapter)
                     .font(.system(size: 11, weight: .semibold))
@@ -649,8 +708,8 @@ private struct ScrubTooltip: View {
             }
         }
         .foregroundStyle(.white)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.s)
         .background {
             Capsule(style: .continuous).fill(Color.black.opacity(0.8))
         }

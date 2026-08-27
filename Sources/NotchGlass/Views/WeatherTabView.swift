@@ -74,7 +74,7 @@ struct WeatherTabView: View {
     // MARK: - Forecast
 
     private func forecast(_ current: CurrentWeather) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             header
             modePills
             Group {
@@ -95,16 +95,16 @@ struct WeatherTabView: View {
 
     /// The Forecast / Sun & Moon switcher.
     private var modePills: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s) {
             ForEach(WeatherMode.allCases) { m in
                 let on = mode == m
                 Button { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { mode = m } } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: Spacing.s) {
                         Image(systemName: m.symbol).font(.system(size: 10, weight: .semibold))
                         Text(m.title).font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundStyle(on ? settings.accent.readableForeground : Theme.secondaryText)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, Spacing.base)
                     .frame(height: 24)
                     .background {
                         Capsule(style: .continuous)
@@ -129,7 +129,7 @@ struct WeatherTabView: View {
            let lon = weather.longitude ?? location.location?.coordinate.longitude {
             SunMoonBoardView(latitude: lat, longitude: lon, accent: settings.accent)
         } else {
-            VStack(spacing: 10) {
+            VStack(spacing: Spacing.md) {
                 ThinkingOrb(size: 28)
                 Text("Finding your location…")
                     .font(.system(size: 12, weight: .medium))
@@ -141,7 +141,7 @@ struct WeatherTabView: View {
 
     /// Location name on the left, a °C/°F toggle and a refresh button on the right.
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Spacing.md) {
             Image(systemName: "location.fill")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(settings.accent)
@@ -167,7 +167,7 @@ struct WeatherTabView: View {
     }
 
     private var unitToggle: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: Spacing.hair) {
             ForEach([false, true], id: \.self) { f in
                 let on = fahrenheit == f
                 Button { fahrenheit = f } label: {
@@ -184,14 +184,14 @@ struct WeatherTabView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(2)
+        .padding(Spacing.hair)
         .background { Capsule(style: .continuous).fill(Color.white.opacity(0.08)) }
     }
 
     // MARK: - Non-forecast states
 
     private var loadingState: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             ThinkingOrb(size: 30)
             Text(location.location == nil ? "Finding your location…" : "Loading the forecast…")
                 .font(.system(size: 12, weight: .medium))
@@ -201,7 +201,7 @@ struct WeatherTabView: View {
     }
 
     private var errorState: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             Image(systemName: "cloud.slash.fill")
                 .font(.system(size: 28, weight: .light))
                 .foregroundStyle(Theme.tertiaryText)
@@ -214,7 +214,7 @@ struct WeatherTabView: View {
                 Text("Try Again")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(settings.accent.readableForeground)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Spacing.lg)
                     .frame(height: 30)
                     .background { Capsule().fill(settings.accent) }
             }
@@ -225,7 +225,7 @@ struct WeatherTabView: View {
     }
 
     private var deniedPrompt: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             Image(systemName: "location.slash.fill")
                 .font(.system(size: 30, weight: .light))
                 .foregroundStyle(settings.accent)
@@ -240,7 +240,7 @@ struct WeatherTabView: View {
                 Text("Open Settings")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(settings.accent.readableForeground)
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, Spacing.lg)
                     .frame(height: 32)
                     .background { Capsule().fill(settings.accent) }
             }

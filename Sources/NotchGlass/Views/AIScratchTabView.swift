@@ -31,7 +31,7 @@ struct AIScratchTabView: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: Spacing.sm) {
             header
             transcript
             inputBar
@@ -57,7 +57,7 @@ struct AIScratchTabView: View {
     /// picker on the left and a clear button on the right.
     private var header: some View {
         ZStack {
-            HStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
                 Image(systemName: "ellipsis.message.fill")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white)
@@ -65,7 +65,7 @@ struct AIScratchTabView: View {
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(.white)
             }
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.sm) {
                 modelMenu
                 Spacer(minLength: 0)
                 if !store.messages.isEmpty {
@@ -82,7 +82,7 @@ struct AIScratchTabView: View {
                 }
             }
         }
-        .padding(.bottom, 2)
+        .padding(.bottom, Spacing.hair)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
         }
@@ -99,12 +99,12 @@ struct AIScratchTabView: View {
                 }
             }
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: Spacing.xs) {
                 Text(model.title).font(.system(size: 10.5, weight: .semibold))
                 Image(systemName: "chevron.down").font(.system(size: 7, weight: .bold))
             }
             .foregroundStyle(Theme.secondaryText)
-            .padding(.horizontal, 9)
+            .padding(.horizontal, Spacing.md)
             .frame(height: 24)
             .background { Capsule().fill(Color.white.opacity(0.08)) }
         }
@@ -134,9 +134,9 @@ struct AIScratchTabView: View {
     /// Staged-attachment chips, shown above the composer until the message is sent.
     private var attachmentBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: Spacing.s) {
                 ForEach(attachments) { att in
-                    HStack(spacing: 6) {
+                    HStack(spacing: Spacing.s) {
                         Image(systemName: att.symbol)
                             .font(.system(size: 11, weight: .semibold))
                         Text(att.filename)
@@ -151,13 +151,13 @@ struct AIScratchTabView: View {
                         .linkCursor()
                     }
                     .foregroundStyle(.white)
-                    .padding(.leading, 9)
-                    .padding(.trailing, 7)
-                    .padding(.vertical, 5)
+                    .padding(.leading, Spacing.md)
+                    .padding(.trailing, Spacing.sm)
+                    .padding(.vertical, Spacing.s)
                     .background { Capsule().fill(Color.white.opacity(0.10)) }
                 }
             }
-            .padding(.horizontal, 1)
+            .padding(.horizontal, Spacing.hair)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -200,7 +200,7 @@ struct AIScratchTabView: View {
     private var transcript: some View {
         ScrollViewReader { proxy in
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     if store.messages.isEmpty && !store.isSending {
                         emptyState
                     }
@@ -213,7 +213,7 @@ struct AIScratchTabView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 4)
+                .padding(.vertical, Spacing.xs)
             }
             .onChange(of: store.messages.count) { _, _ in scrollToEnd(proxy) }
             .onChange(of: store.isSending) { _, _ in scrollToEnd(proxy) }
@@ -239,16 +239,16 @@ struct AIScratchTabView: View {
         let fg: Color = isUser ? Theme.ember.readableForeground : .white
         return HStack {
             if isUser { Spacer(minLength: 44) }
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Spacing.s) {
                 // Attached files, shown as inline chips at the top of the bubble.
                 ForEach(message.attachments) { att in
-                    HStack(spacing: 5) {
+                    HStack(spacing: Spacing.s) {
                         Image(systemName: att.symbol).font(.system(size: 10, weight: .semibold))
                         Text(att.filename).font(.system(size: 11, weight: .medium)).lineLimit(1)
                     }
                     .foregroundStyle(fg.opacity(0.85))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, Spacing.sm)
+                    .padding(.vertical, Spacing.xs)
                     .background { Capsule().fill(fg.opacity(0.15)) }
                 }
                 if !message.text.isEmpty {
@@ -259,8 +259,8 @@ struct AIScratchTabView: View {
                         .multilineTextAlignment(.leading)
                 }
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 8)
+            .padding(.horizontal, Spacing.base)
+            .padding(.vertical, Spacing.sm)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(isUser ? AnyShapeStyle(Theme.ember)
@@ -272,14 +272,14 @@ struct AIScratchTabView: View {
 
     private var pendingBubble: some View {
         HStack {
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.sm) {
                 ThinkingOrb(size: 18, tint: Theme.ember)
                 Text("Typing…")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Theme.secondaryText)
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 8)
+            .padding(.horizontal, Spacing.base)
+            .padding(.vertical, Spacing.sm)
             .background {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .fill(Color.white.opacity(0.10))
@@ -289,7 +289,7 @@ struct AIScratchTabView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             Image(systemName: "ellipsis.message.fill")
                 .font(.system(size: 30, weight: .regular))
                 .foregroundStyle(.white.opacity(0.85))
@@ -306,7 +306,7 @@ struct AIScratchTabView: View {
     // MARK: - Input
 
     private var inputBar: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: Spacing.s) {
             if let error = store.error {
                 Text(error)
                     .font(.system(size: 10.5, weight: .medium))
@@ -314,7 +314,7 @@ struct AIScratchTabView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             if !attachments.isEmpty { attachmentBar }
-            HStack(alignment: .center, spacing: 8) {
+            HStack(alignment: .center, spacing: Spacing.sm) {
                 plusButton
                 TextField("Message", text: $draft, axis: .vertical)
                     .textFieldStyle(.plain)
@@ -332,8 +332,8 @@ struct AIScratchTabView: View {
                         send()
                         return .handled
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.vertical, Spacing.sm)
                     .background {
                         Capsule(style: .continuous)
                             .fill(Color.white.opacity(0.07))

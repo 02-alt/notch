@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import AppKit
 
 /// Fills the fixed-size panel window and morphs between the collapsed notch pill
 /// and the expanded glass panel. The window never resizes — only this content
@@ -46,23 +47,54 @@ struct RootView: View {
     /// flashing the pill widens and drops a touch into a small banner, so the notch
     /// visibly *opens a little* to deliver the message before settling back.
     private var collapsedBodySize: CGSize {
-        guard !vm.isOpen, vm.collapsedEvent != nil else { return vm.collapsedSize }
+        guard !vm.isOpen else { return vm.collapsedSize }
         let base = vm.collapsedSize
-        return CGSize(width: max(base.width + 168, 320), height: base.height + 12)
+        // A fuel-style notice pops a short banner; the Dynamic Island morphs a touch
+        // wider and taller so its two-slot activity (art + EQ) has room to breathe.
+        if vm.islandActivity != nil {
+            return CGSize(width: max(base.width + 220, 360), height: base.height + 18)
+        }
+        if vm.collapsedEvent != nil {
+            return CGSize(width: max(base.width + 168, 320), height: base.height + 12)
+        }
+        // Persistent island: even at rest the pill sits wider than the bare notch, so
+        // switching the mode on visibly transforms the notch into an always-on island
+        // with room for the time + battery either side of the camera.
+        if settings.dynamicIsland {
+            return CGSize(width: max(base.width + 150, 300), height: base.height + 6)
+        }
+        return base
     }
 
-    /// Bottom corner radius grows with the body so the pill's tight curve opens
-    /// out into the panel's softer corners.
+    /// Dynamic Island mode detaches the *whole* panel — collapsed capsule and open
+    /// card alike — from the top edge into a free-floating rounded shape (iPhone
+    /// style), rather than welding to the bezel. The open panel grows out of the
+    /// floating pill and stays a detached rounded card instead of snapping to a notch.
+    private var islandMode: Bool { settings.dynamicIsland }
+
+    /// True only for the collapsed floating capsule — drives its resting shadow.
+    private var floatingCollapsed: Bool { islandMode && !vm.isOpen }
+
+    /// The floating drop below the screen's top edge. A *constant* gap whenever island
+    /// mode is on, so the open card and the resting capsule share the same top inset
+    /// and the morph between them never jumps vertically; zero when welded.
+    private var islandTopGap: CGFloat { islandMode ? Metrics.islandFloatGap : 0 }
+
+    /// Bottom corner radius: the open panel's soft corner, the floating capsule's full
+    /// round, or the welded pill's tight curve.
     private var bottomRadius: CGFloat {
-        vm.isOpen ? Metrics.panelCornerRadius : min(vm.collapsedSize.height / 2, 12)
+        if vm.isOpen { return Metrics.panelCornerRadius }
+        if islandMode { return collapsedBodySize.height / 2 }
+        return min(vm.collapsedSize.height / 2, 12)
     }
 
-    /// Top corner radius: the *flare* radius. Kept small (12pt) even on a non-notch
-    /// screen so the expanded panel keeps a near-flat top and still reads as a notch
-    /// panel — not a fully-rounded card. Within the panel's 14pt padding so it never
-    /// clips content.
+    /// Top corner radius. Welded panels keep a near-flat 12pt flare so they read as a
+    /// notch; the floating island rounds fully — a soft card when open, a capsule when
+    /// collapsed — so it never looks welded to the bezel.
     private var topRadius: CGFloat {
-        vm.isOpen ? 12 : min(vm.collapsedSize.height / 2, 8)
+        if vm.isOpen { return islandMode ? Metrics.panelCornerRadius : 12 }
+        if islandMode { return collapsedBodySize.height / 2 }
+        return min(vm.collapsedSize.height / 2, 8)
     }
 
     /// The notch body outline.
@@ -73,7 +105,9 @@ struct RootView: View {
     /// and it's what users expect even on a display without a physical notch, so we
     /// no longer fall back to a plain rounded card there.
     private var bodyShape: NotchShape {
-        NotchShape(topRadius: topRadius, bottomRadius: bottomRadius, weld: true)
+        // Weld to the bezel unless Dynamic Island mode is on, where the panel floats
+        // free with all four corners rounded — open and closed alike.
+        NotchShape(topRadius: topRadius, bottomRadius: bottomRadius, weld: !islandMode)
     }
 
     /// Hit-test shape for the hover trigger — the full body when open, a narrower
@@ -118,7 +152,7 @@ struct RootView: View {
         ZStack {
             MorphSurface(progress: vm.isOpen ? 1 : 0)
                 .opacity(glassActive || lightActive || noirActive ? 0 : 1)
-            GlassPanelSurface()
+            GlassPanelSurface(shape: AnyShape(bodyShape))
                 .opacity(glassActive ? 1 : 0)
             LightPanelSurface()
                 .opacity(lightActive ? 1 : 0)
@@ -165,15 +199,18 @@ struct RootView: View {
                 if glassActive {
                     // strokeBorder (not stroke) keeps the lip *inside* the clipped
                     // edge, exactly on the hairline — a centred stroke would sit half
-                    // outside and read as a faint second outline at the corners.
+                    // outside and read as a faint second outline at the corners. The
+                    // refractive lip: a bright highlight along the rounded bottom edge
+                    // where the glass is thickest and catches light — beefed up so the
+                    // bottom reads as real, thick glass. (No chromatic/rainbow tint.)
                     bodyShape
                         .strokeBorder(
                             LinearGradient(
-                                colors: [.clear, .clear, Color.white.opacity(0.38)],
+                                colors: [.clear, .clear, Color.white.opacity(0.55)],
                                 startPoint: .top,
                                 endPoint: .bottom
                             ),
-                            lineWidth: 1.5
+                            lineWidth: 2.5
                         )
                         .allowsHitTesting(false)
                 }
@@ -183,11 +220,22 @@ struct RootView: View {
             .overlay {
                 bodyShape.strokeBorder(settings.accent.opacity(vm.dragActive ? 0.9 : 0), lineWidth: 2)
             }
-            .shadow(color: .black.opacity(vm.isOpen ? 0.5 : 0),
-                    radius: vm.isOpen ? 18 : 0,
-                    y: vm.isOpen ? 8 : 0)
+            // No drop shadow on the open panel: against a light window sitting behind
+            // the notch, any shadow traces a grey rounded halo around the panel that
+            // reads as a second "back panel". The panel welds to the top bezel, so it
+            // doesn't need a cast shadow to sit right.
+            // Depth under the detached floating capsule so it reads as hovering off
+            // the desktop rather than painted onto the bezel. (The open card already
+            // gets the isOpen shadow above.)
+            .shadow(color: .black.opacity(floatingCollapsed ? 0.5 : 0),
+                    radius: floatingCollapsed ? 12 : 0,
+                    y: floatingCollapsed ? 6 : 0)
             .shadow(color: settings.accent.opacity(vm.dragActive ? 0.45 : 0),
                     radius: vm.dragActive ? 16 : 0)
+            // Drop the floating island down off the top edge so the desktop shows
+            // above and around it — open card and collapsed capsule alike. Welded
+            // (non-island) states keep gap = 0 and hang from the bezel.
+            .offset(y: islandTopGap)
             // Hover target. Open: the whole panel silhouette, so it stays open
             // while the pointer roams the panel. Collapsed: a central zone inset
             // from the pill's sides, so it only opens when the pointer is actually
@@ -204,14 +252,20 @@ struct RootView: View {
         // (the expanded Mood board) so the window itself never has to resize; the
         // body grows within it, centered.
         .frame(width: frameWidth,
-               height: Metrics.windowContentHeight + Metrics.openTopGap,
+               height: Metrics.windowContentHeight + Metrics.openTopGap + Metrics.islandFloatGap,
                alignment: .top)
         // One animation drives the whole morph — frame, corner radius, surface,
         // stroke, shadow and the content reveal all move together.
         .animation(vm.isOpen ? Metrics.openSpring : Metrics.closeSpring, value: vm.isOpen)
         // The little "notch opens" bump when a fuel event flashes in, and back.
         .animation(Metrics.openSpring, value: vm.collapsedEvent)
+        // Note: the Dynamic Island's expand/settle is driven by explicit
+        // `withAnimation` in `presentIsland` (distinct springs each way), so it
+        // deliberately has *no* implicit `.animation(value: vm.islandActivity)` here —
+        // one would override those springs with a single curve.
         .animation(Metrics.openSpring, value: settings.panelTheme)
+        // Toggling Dynamic Island morphs the resting pill wider/narrower — spring it.
+        .animation(Metrics.islandExpand, value: settings.dynamicIsland)
         .animation(Metrics.openSpring, value: vm.showSettings)
         .animation(Metrics.openSpring, value: vm.showWhatsNew)
         // Each Settings category has its own height — animate the resize on switch.
@@ -303,19 +357,53 @@ private struct MorphSurface: View, Animatable {
 /// by the caller (it needs the notch silhouette). Fills its frame; clipped to the
 /// notch shape by the caller.
 ///
-/// Why a black→clear gradient over real glass, not a flat glass tint: a glass tint
-/// is one flat colour and the system drops it on tall surfaces anyway (see
+/// Why a black→clear gradient over frosted glass, not a flat glass tint: a glass
+/// tint is one flat colour and the system drops it on tall surfaces anyway (see
 /// `blackGlass`), so it can't give the opaque-top / clear-bottom ramp that defines
-/// this look. We keep a plain `.regular` glass for the frost + bottom-edge
-/// refraction and take the hood from a vertical black gradient over it.
+/// this look. We keep a frost layer for the glassy translucency and take the hood
+/// from a vertical black gradient over it.
 private struct GlassPanelSurface: View {
+    /// The notch silhouette the glass is drawn in. Passing the *actual* rounded shape
+    /// (rather than a plain rectangle that's clipped afterwards) makes the system's
+    /// edge lensing follow the rounded bottom curve — so the desktop visibly *bends*
+    /// along the bottom lip, the native version of the Dynamic-Island refraction.
+    var shape: AnyShape
+
     var body: some View {
+        // Real Liquid Glass: `.glassEffect(.regular)` refracts + lenses the desktop
+        // behind the transparent panel window, so the translucent lower region reads
+        // as true glass (the iPhone Siri-overlay look), not a flat frost. The "back
+        // panel" that looked like it came from here was actually the panel's separate
+        // drop shadow (a wide `.shadow`) — that's removed at the call site, so the
+        // real glass can stay without any stray plate behind it.
         Color.clear
-            // Real glass under the hood: frosts + refracts the desktop in the
-            // translucent lower region and lenses the rounded bottom edge.
-            .glassEffect(.regular, in: Rectangle())
-            // The hood: solid opaque black at the notch, held through the top third,
-            // then ramped to fully clear so the wallpaper shows through the bottom.
+            // Real Liquid Glass under the hood: `.glassEffect(.regular)` frosts,
+            // blurs and lenses (refracts) the desktop behind the transparent window —
+            // the native distortion of the iPhone Siri overlay. Drawn *in the notch
+            // shape* so the lensing bends the wallpaper along the rounded bottom edge.
+            .glassEffect(.regular, in: shape)
+            // Lighten the glass *frost* over the lower panel. `.regular` glass carries
+            // its own grey frost (~10% dim over a bright wallpaper); fading it to about
+            // half toward the bottom halves that to ~5%, so the bottom reads more
+            // transparent — without the full washout the `.clear` variant caused. Full
+            // glass is kept up top where the black cap sits.
+            .mask {
+                LinearGradient(
+                    stops: [
+                        .init(color: .white,              location: 0.00),
+                        .init(color: .white,              location: 0.58),
+                        .init(color: .white.opacity(0.5), location: 1.00),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+            // The Siri hood: a solid opaque black cap welded at the notch, held through
+            // the top, then ramped down so the wallpaper shows through the glass toward
+            // the bottom — "black at the top, transparent the further down you go".
+            // (Kept substantial through the middle so the dark glass identity reads and
+            // the player content stays legible; the `.clear` variant washed the whole
+            // panel out and lost the theme, so we're back on `.regular` + this hood.)
             .overlay {
                 LinearGradient(
                     stops: [
@@ -330,14 +418,8 @@ private struct GlassPanelSurface: View {
                 )
                 .allowsHitTesting(false)
             }
-            // A whisper of chromatic dispersion on the black glass near the notch —
-            // the Siri rainbow, kept faint and drifting so slowly it never catches
-            // the eye; you notice it only if you look for it.
-            .overlay(alignment: .top) {
-                PrismStreak()
-                    .padding(.top, 8)   // pinned to the top edge of the black glass
-                    .allowsHitTesting(false)
-            }
+            // (The faint drifting "Siri rainbow" prism at the top edge was removed on
+            // request — no rainbow / chromatic dispersion anywhere on the glass.)
     }
 }
 
@@ -348,6 +430,7 @@ private struct PrismStreak: View {
     // Starts offset a touch to one side; the repeating ease drifts it to the other
     // and back. Kept small so it always reads centered — just barely alive.
     @State private var drift: CGFloat = -9
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         LinearGradient(
@@ -367,8 +450,9 @@ private struct PrismStreak: View {
         .blur(radius: 4)
         .opacity(0.38)             // faint, but actually visible on the black glass
         .blendMode(.plusLighter)
-        .offset(x: drift)
+        .offset(x: reduceMotion ? 0 : drift)   // Reduce Motion: hold it centered, no drift
         .onAppear {
+            guard !reduceMotion else { return }
             withAnimation(.easeInOut(duration: 30).repeatForever(autoreverses: true)) {
                 drift = 9
             }

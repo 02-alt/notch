@@ -34,6 +34,47 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.08",
+            summary: "A Liquid Glass notch you can shape into anything.",
+            changes: [
+                ReleaseChange(
+                    symbol: "drop.fill",
+                    title: "Liquid Glass, everywhere",
+                    detail: "The whole notch is now real Liquid Glass — a Siri-style hood that frosts and lenses the desktop right through it. It's the new default look."
+                ),
+                ReleaseChange(
+                    symbol: "plus.app.fill",
+                    title: "A tab for everything",
+                    detail: "Tap “+” to browse a searchable gallery and add or remove tabs — Calendar, Maps, Weather, Websites, screen Record, a shortcut Deck and a Mood board — so the notch fits how you work."
+                ),
+                ReleaseChange(
+                    symbol: "bubbles.and.sparkles.fill",
+                    title: "Dynamic Island mode",
+                    detail: "Flip it on and the closed notch becomes an always-on island — the time on one side, battery and date on the other. It also expands on its own for live moments — a new track, a finished timer, an incoming AirDrop — then settles back. Off by default; turn it on in Settings."
+                ),
+                ReleaseChange(
+                    symbol: "ellipsis.message.fill",
+                    title: "Chat with Claude",
+                    detail: "Ask Claude right inside the notch with the new Chat tab, signed in with your own account — no extra setup."
+                ),
+                ReleaseChange(
+                    symbol: "cloud.rain.fill",
+                    title: "Ambient soundscapes",
+                    detail: "Rain, shore, storm, park or a crackling cabin — play a background soundscape to focus or wind down without leaving your work."
+                ),
+                ReleaseChange(
+                    symbol: "clock.fill",
+                    title: "Clocks, timers & Pomodoro",
+                    detail: "World clocks, quick countdown timers and a Pomodoro focus cycle, all living in one Clock tab."
+                ),
+                ReleaseChange(
+                    symbol: "paintpalette.fill",
+                    title: "Pick your look",
+                    detail: "Switch between Liquid Glass, deep-black Noir and a bright Light theme in Settings to match your desktop and mood."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.1",
             summary: "Clearer numbers, nicer photos, and a livelier notch.",
             changes: [

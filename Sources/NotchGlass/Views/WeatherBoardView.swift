@@ -168,7 +168,7 @@ struct WeatherBoardView: View {
             .foregroundStyle(.white.opacity(0.55))
             .frame(width: 22, height: 22)
             .background { Circle().fill(Color.black.opacity(0.35)) }
-            .padding(5)
+            .padding(Spacing.s)
             .contentShape(Rectangle())
             .notchHover(scale: 1.15, cursor: .grabIdle)
             .gesture(
@@ -220,7 +220,7 @@ struct WeatherBoardView: View {
 
     private var addTile: some View {
         Button { withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { adding = true } } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: Spacing.sm) {
                 Image(systemName: "plus")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
@@ -382,7 +382,7 @@ private struct WeatherTileCard: View {
                 else { small(s) }
             }
         } else {
-            VStack(spacing: 6) {
+            VStack(spacing: Spacing.s) {
                 ThinkingOrb(size: 20)
                 Text(tile.place.name)
                     .font(.system(size: 11, weight: .semibold))
@@ -397,7 +397,7 @@ private struct WeatherTileCard: View {
     // and the condition along the bottom.
     private func small(_ s: CitySnapshot) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 4) {
+            HStack(alignment: .top, spacing: Spacing.xs) {
                 cityName(s)
                 Spacer(minLength: 0)
                 Image(systemName: WeatherCode.symbol(s.code, isDay: s.isDay))
@@ -412,18 +412,18 @@ private struct WeatherTileCard: View {
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(Theme.secondaryText)
                 .lineLimit(2)
-                .padding(.top, 2)
+                .padding(.top, Spacing.hair)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
+        .padding(Spacing.base)
     }
 
     // 2×1 — Apple's medium widget: location + big temp + hi/lo on the left, glyph and
     // condition on the right, over a short hourly strip.
     private func wide(_ s: CitySnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Spacing.sm) {
+            HStack(alignment: .top, spacing: Spacing.md) {
+                VStack(alignment: .leading, spacing: Spacing.hair) {
                     cityName(s)
                     Text("\(s.temp)°")
                         .font(.system(size: 40, weight: .bold).monospacedDigit())
@@ -431,7 +431,7 @@ private struct WeatherTileCard: View {
                     hiLo(s)
                 }
                 Spacer(minLength: 0)
-                VStack(alignment: .trailing, spacing: 4) {
+                VStack(alignment: .trailing, spacing: Spacing.xs) {
                     Image(systemName: WeatherCode.symbol(s.code, isDay: s.isDay))
                         .font(.system(size: 26, weight: .medium))
                         .symbolRenderingMode(.multicolor)
@@ -445,16 +445,16 @@ private struct WeatherTileCard: View {
             Spacer(minLength: 0)
             hourStrip(s, count: 5)
         }
-        .padding(12)
+        .padding(Spacing.base)
     }
 
     // 3×1 — Apple's large widget: a hero on the left, then a 6-hour strip stacked
     // over daily rows with temperature-range bars.
     private func xwide(_ s: CitySnapshot) -> some View {
-        HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .center, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.hair) {
                 cityName(s)
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
                     Text("\(s.temp)°")
                         .font(.system(size: 42, weight: .bold).monospacedDigit())
                         .lineLimit(1).minimumScaleFactor(0.6)
@@ -472,21 +472,21 @@ private struct WeatherTileCard: View {
 
             Divider().overlay(Theme.line(0.10))
 
-            VStack(spacing: 7) {
+            VStack(spacing: Spacing.sm) {
                 hourStrip(s, count: 6)
                 Divider().overlay(Theme.line(0.10))
                 dailyRows(s, count: 3)
             }
             .frame(maxWidth: .infinity)
         }
-        .padding(14)
+        .padding(Spacing.lg)
     }
 
     // 1×2 — a slim two-row column: a compact hero over a stacked hourly list, the
     // extra height letting several hours read vertically.
     private func tall(_ s: CitySnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: 4) {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            HStack(alignment: .top, spacing: Spacing.xs) {
                 cityName(s)
                 Spacer(minLength: 0)
                 Image(systemName: WeatherCode.symbol(s.code, isDay: s.isDay))
@@ -501,10 +501,10 @@ private struct WeatherTileCard: View {
                 .foregroundStyle(Theme.secondaryText)
                 .lineLimit(1)
             hiLo(s)
-            Divider().overlay(Theme.line(0.10)).padding(.vertical, 2)
-            VStack(spacing: 9) {
+            Divider().overlay(Theme.line(0.10)).padding(.vertical, Spacing.hair)
+            VStack(spacing: Spacing.md) {
                 ForEach(s.hourly.prefix(6)) { hour in
-                    HStack(spacing: 6) {
+                    HStack(spacing: Spacing.s) {
                         Text(hour.label)
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(Theme.secondaryText)
@@ -520,15 +520,15 @@ private struct WeatherTileCard: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(12)
+        .padding(Spacing.base)
     }
 
     // 2×2 — a header, an hourly strip and four daily range-bar rows in the taller
     // two-row footprint.
     private func big(_ s: CitySnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            HStack(alignment: .top, spacing: Spacing.md) {
+                VStack(alignment: .leading, spacing: Spacing.hair) {
                     cityName(s)
                     Text("\(s.temp)°")
                         .font(.system(size: 44, weight: .bold).monospacedDigit())
@@ -536,7 +536,7 @@ private struct WeatherTileCard: View {
                     hiLo(s)
                 }
                 Spacer(minLength: 0)
-                VStack(alignment: .trailing, spacing: 4) {
+                VStack(alignment: .trailing, spacing: Spacing.xs) {
                     Image(systemName: WeatherCode.symbol(s.code, isDay: s.isDay))
                         .font(.system(size: 30, weight: .medium))
                         .symbolRenderingMode(.multicolor)
@@ -552,19 +552,19 @@ private struct WeatherTileCard: View {
             dailyRows(s, count: 4)
             Spacer(minLength: 0)
         }
-        .padding(14)
+        .padding(Spacing.lg)
     }
 
     // 3×2 — the full Apple large widget: a big hero on the left, then an 8-hour
     // strip stacked over six daily range-bar rows on the right.
     private func large(_ s: CitySnapshot) -> some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .top, spacing: Spacing.lg) {
+            VStack(alignment: .leading, spacing: Spacing.xs) {
                 cityName(s, big: true)
                 Image(systemName: WeatherCode.symbol(s.code, isDay: s.isDay))
                     .font(.system(size: 40, weight: .medium))
                     .symbolRenderingMode(.multicolor)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, Spacing.hair)
                 Text("\(s.temp)°")
                     .font(.system(size: 56, weight: .bold).monospacedDigit())
                     .lineLimit(1).minimumScaleFactor(0.5)
@@ -579,7 +579,7 @@ private struct WeatherTileCard: View {
 
             Divider().overlay(Theme.line(0.10))
 
-            VStack(spacing: 10) {
+            VStack(spacing: Spacing.md) {
                 hourStrip(s, count: 8)
                 Divider().overlay(Theme.line(0.10))
                 dailyRows(s, count: 6)
@@ -587,7 +587,7 @@ private struct WeatherTileCard: View {
             }
             .frame(maxWidth: .infinity)
         }
-        .padding(16)
+        .padding(Spacing.lg)
     }
 
     /// Apple's daily rows: weekday · glyph · low · a colour range bar · high. The bar
@@ -596,9 +596,9 @@ private struct WeatherTileCard: View {
         let days = Array(s.daily.prefix(count))
         let scaleLo = days.map(\.lo).min() ?? 0
         let scaleHi = days.map(\.hi).max() ?? 1
-        return VStack(spacing: 5) {
+        return VStack(spacing: Spacing.s) {
             ForEach(days) { day in
-                HStack(spacing: 8) {
+                HStack(spacing: Spacing.sm) {
                     Text(day.label)
                         .font(.system(size: 11, weight: .semibold))
                         .frame(width: 30, alignment: .leading)
@@ -621,14 +621,14 @@ private struct WeatherTileCard: View {
 
     /// Apple-style ↑high ↓low readout.
     private func hiLo(_ s: CitySnapshot) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s) {
             tempArrow("arrow.up", s.hi)
             tempArrow("arrow.down", s.lo)
         }
     }
 
     private func tempArrow(_ symbol: String, _ value: Int) -> some View {
-        HStack(spacing: 1) {
+        HStack(spacing: Spacing.hair) {
             Image(systemName: symbol).font(.system(size: 9, weight: .bold))
             Text("\(value)°").font(.system(size: 11, weight: .semibold).monospacedDigit())
         }
@@ -638,7 +638,7 @@ private struct WeatherTileCard: View {
     // MARK: Pieces
 
     private func cityName(_ s: CitySnapshot, big: Bool = false) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: Spacing.xs) {
             if tile.place.isCurrent {
                 Image(systemName: "location.fill").font(.system(size: big ? 11 : 9, weight: .bold))
                     .foregroundStyle(accent)
@@ -650,9 +650,9 @@ private struct WeatherTileCard: View {
     }
 
     private func hourStrip(_ s: CitySnapshot, count: Int) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: Spacing.s) {
             ForEach(s.hourly.prefix(count)) { hour in
-                VStack(spacing: 4) {
+                VStack(spacing: Spacing.xs) {
                     Text(hour.label)
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(Theme.secondaryText)
@@ -745,7 +745,7 @@ private struct AddPlacePanel: View {
     @State private var searching = false
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Spacing.md) {
             HStack {
                 Text("Add a destination")
                     .font(.system(size: 13, weight: .bold))
@@ -764,13 +764,13 @@ private struct AddPlacePanel: View {
                 Button {
                     onPick(SavedPlace(name: "My Location", latitude: 0, longitude: 0, isCurrent: true))
                 } label: {
-                    HStack(spacing: 8) {
+                    HStack(spacing: Spacing.sm) {
                         Image(systemName: "location.fill").font(.system(size: 12, weight: .bold))
                         Text("Current Location").font(.system(size: 12, weight: .semibold))
                         Spacer(minLength: 0)
                     }
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 12).frame(height: 34)
+                    .padding(.horizontal, Spacing.base).frame(height: 34)
                     .background { RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.08)) }
                     .contentShape(Rectangle())
                 }
@@ -778,7 +778,7 @@ private struct AddPlacePanel: View {
                 .notchHover(scale: 1.01)
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: Spacing.sm) {
                 Image(systemName: "magnifyingglass").font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
                 TextField("Search a city…", text: $query)
@@ -788,22 +788,22 @@ private struct AddPlacePanel: View {
                     .onSubmit(runSearch)
                 if searching { ThinkingOrb(size: 16) }
             }
-            .padding(.horizontal, 12).frame(height: 34)
+            .padding(.horizontal, Spacing.base).frame(height: 34)
             .background { Capsule().fill(Color.white.opacity(0.08)) }
 
             if !results.isEmpty {
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 4) {
+                    VStack(spacing: Spacing.xs) {
                         ForEach(results, id: \.self) { place in
                             Button { onPick(place) } label: {
-                                HStack(spacing: 8) {
+                                HStack(spacing: Spacing.sm) {
                                     Image(systemName: "mappin.circle.fill")
                                         .font(.system(size: 13)).foregroundStyle(Theme.secondaryText)
                                     Text(place.name).font(.system(size: 12, weight: .semibold))
                                         .foregroundStyle(.white).lineLimit(1)
                                     Spacer(minLength: 0)
                                 }
-                                .padding(.horizontal, 10).frame(height: 30)
+                                .padding(.horizontal, Spacing.md).frame(height: 30)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -815,14 +815,14 @@ private struct AddPlacePanel: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(16)
+        .padding(Spacing.lg)
         .frame(maxWidth: 360, maxHeight: .infinity, alignment: .top)
         .background {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(Color.black.opacity(0.9))
                 .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.white.opacity(0.12), lineWidth: 1) }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, Spacing.s)
     }
 
     private func runSearch() {
