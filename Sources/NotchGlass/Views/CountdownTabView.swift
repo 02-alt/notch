@@ -28,6 +28,9 @@ struct CountdownTabView: View {
     var body: some View {
         VStack(spacing: Spacing.base) {
             header
+            // The add form is static — keep it out of the ticking TimelineView so
+            // the month grid isn't rebuilt (and its DatePicker re-diffed) every second.
+            if isAdding { addForm }
             TimelineView(.periodic(from: .now, by: 1.0)) { context in
                 content(now: context.date)
             }
@@ -61,7 +64,6 @@ struct CountdownTabView: View {
 
     private func content(now: Date) -> some View {
         VStack(spacing: Spacing.base) {
-            if isAdding { addForm }
             let all = events
             if all.isEmpty && !isAdding {
                 emptyState
@@ -169,7 +171,7 @@ struct CountdownTabView: View {
     // MARK: Add form
 
     private var addForm: some View {
-        VStack(spacing: Spacing.sm) {
+        VStack(spacing: Spacing.base) {
             HStack(spacing: Spacing.sm) {
                 Image(systemName: "hourglass")
                     .font(.system(size: 12, weight: .semibold))
@@ -181,8 +183,12 @@ struct CountdownTabView: View {
                     .tint(settings.accent)
                     .onSubmit(commit)
             }
+            MonthCalendar(selection: $newDate, accent: settings.accent)
             HStack(spacing: Spacing.sm) {
-                DatePicker("", selection: $newDate, displayedComponents: [.date, .hourAndMinute])
+                Image(systemName: "clock")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.secondaryText)
+                DatePicker("", selection: $newDate, displayedComponents: [.hourAndMinute])
                     .datePickerStyle(.compact)
                     .labelsHidden()
                     .tint(settings.accent)
@@ -269,4 +275,147 @@ struct CountdownEvent: Codable, Identifiable, Equatable {
     var id = UUID()
     var title: String
     var date: Date
+}
+
+/// A compact month grid for picking the countdown's day — a simpler, more visual
+/// stand-in for the system `DatePicker`'s date popover. Only the day changes here;
+/// the selection's time-of-day is preserved so the sibling time picker owns it.
+///
+/// Laid out on the app's `Spacing` scale (a `Spacing.hair` gutter between cells,
+/// matching the 2pt data-surface gap) and framed as an inset Liquid Glass panel —
+/// the shared black glass, so it reads as one of the app's own surfaces. The accent
+/// is reserved for the single selected day; `today` gets a hairline ring only.
+private struct MonthCalendar: View {
+    @Binding var selection: Date
+    let accent: Color
+
+    /// The month on show — starts on the selected date's month, then follows the
+    /// chevrons independently of which day is picked.
+    @State private var visibleMonth: Date
+
+    private let cal = Calendar.current
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.hair), count: 7)
+
+    init(selection: Binding<Date>, accent: Color) {
+        _selection = selection
+        self.accent = accent
+        _visibleMonth = State(initialValue: selection.wrappedValue)
+    }
+
+    var body: some View {
+        VStack(spacing: Spacing.sm) {
+            monthBar
+            weekdayRow
+            LazyVGrid(columns: columns, spacing: Spacing.hair) {
+                ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
+                    if let day { dayCell(day) } else { Color.clear.frame(height: 30) }
+                }
+            }
+        }
+        .padding(Spacing.sm)
+        .glassCard(cornerRadius: 12)
+    }
+
+    // MARK: Header
+
+    private var monthBar: some View {
+        HStack {
+            chevron("chevron.left", by: -1)
+            Spacer(minLength: 0)
+            Text(Self.monthTitle.string(from: visibleMonth))
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Theme.primaryText)
+            Spacer(minLength: 0)
+            chevron("chevron.right", by: 1)
+        }
+    }
+
+    private func chevron(_ name: String, by delta: Int) -> some View {
+        Button {
+            if let m = cal.date(byAdding: .month, value: delta, to: visibleMonth) {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) { visibleMonth = m }
+            }
+        } label: {
+            Image(systemName: name)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Theme.secondaryText)
+                .frame(width: 24, height: 24)
+                .background { Circle().fill(Theme.line(0.10)) }
+        }
+        .buttonStyle(.plain)
+        .notchHover(scale: 1.1)
+    }
+
+    private var weekdayRow: some View {
+        LazyVGrid(columns: columns, spacing: 0) {
+            ForEach(Array(weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
+                Text(symbol)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Theme.tertiaryText)
+            }
+        }
+    }
+
+    // MARK: Day cell
+
+    private func dayCell(_ day: Date) -> some View {
+        let isSelected = cal.isDate(day, inSameDayAs: selection)
+        let isToday = cal.isDateInToday(day)
+        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+        return Button {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { pick(day) }
+        } label: {
+            Text("\(cal.component(.day, from: day))")
+                .font(.system(size: 12, weight: isSelected ? .bold : .medium).monospacedDigit())
+                .foregroundStyle(isSelected ? accent.readableForeground
+                                 : isToday ? accent : Theme.primaryText)
+                .frame(maxWidth: .infinity)
+                .frame(height: 30)
+                .background { shape.fill(isSelected ? accent : .clear) }
+                .overlay {
+                    if isToday && !isSelected {
+                        shape.strokeBorder(accent.opacity(0.45), lineWidth: 1)
+                    }
+                }
+                .contentShape(shape)
+        }
+        .buttonStyle(.plain)
+        .notchHover(scale: 1.06)
+    }
+
+    // MARK: Model
+
+    /// Applies the tapped day to `selection` while preserving its time-of-day.
+    private func pick(_ day: Date) {
+        let time = cal.dateComponents([.hour, .minute], from: selection)
+        var dc = cal.dateComponents([.year, .month, .day], from: day)
+        dc.hour = time.hour
+        dc.minute = time.minute
+        if let merged = cal.date(from: dc) { selection = merged }
+    }
+
+    /// Leading blanks (to align the 1st under its weekday) followed by each day of
+    /// the visible month; `nil` renders an empty slot.
+    private var cells: [Date?] {
+        let comps = cal.dateComponents([.year, .month], from: visibleMonth)
+        guard let monthStart = cal.date(from: comps),
+              let range = cal.range(of: .day, in: .month, for: monthStart) else { return [] }
+        let weekdayOfFirst = cal.component(.weekday, from: monthStart)
+        let leading = (weekdayOfFirst - cal.firstWeekday + 7) % 7
+        let days = range.compactMap { cal.date(byAdding: .day, value: $0 - 1, to: monthStart) }
+        return Array(repeating: nil, count: leading) + days as [Date?]
+    }
+
+    /// Single-letter weekday headers, rotated to the locale's first weekday.
+    private var weekdaySymbols: [String] {
+        let symbols = cal.veryShortWeekdaySymbols
+        return (0..<7).map { symbols[(cal.firstWeekday - 1 + $0) % 7] }
+    }
+
+    static let monthTitle: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = .current
+        f.setLocalizedDateFormatFromTemplate("yMMMM")
+        return f
+    }()
 }
