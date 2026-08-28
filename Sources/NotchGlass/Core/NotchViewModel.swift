@@ -76,18 +76,29 @@ final class NotchViewModel: ObservableObject {
     /// A transient notice shown in the collapsed pill (e.g. "Fuel refilled"). Set by
     /// `flash(_:)`, auto-cleared after a beat. Icon + short label + optional tint.
     struct CollapsedEvent: Equatable {
+        /// How the collapsed pill should present this notice. `generic` is the plain
+        /// glyph + label + pulse banner; `refill` gets the dot-matrix charge display
+        /// (see `CollapsedMediaView.RefillPeek`) so tokens coming back reads as a
+        /// little "topped up" moment rather than just another notice.
+        enum Kind: Equatable { case generic, refill }
         var symbol: String
         var text: String
         var tintHex: String?
+        var kind: Kind = .generic
     }
 
     /// The collapsed-pill notice currently showing, if any.
     @Published var collapsedEvent: CollapsedEvent?
+    /// Bumped on every `flash` — used as a view identity for animated peeks (e.g. the
+    /// refill dot-matrix) so a *repeat* notice replays its intro from the start instead
+    /// of the reused view holding at its finished state.
+    @Published private(set) var collapsedEventSeq = 0
     private var collapsedEventWork: DispatchWorkItem?
 
     /// Shows a transient notice in the collapsed pill for `duration` seconds.
     func flash(_ event: CollapsedEvent, for duration: TimeInterval = 5) {
         collapsedEventWork?.cancel()
+        collapsedEventSeq &+= 1
         collapsedEvent = event
         let work = DispatchWorkItem { [weak self] in
             self?.collapsedEvent = nil

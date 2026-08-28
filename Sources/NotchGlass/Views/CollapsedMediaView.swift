@@ -98,20 +98,27 @@ struct CollapsedMediaView: View {
                 islandPeek(activity)
             } else if let event = vm.collapsedEvent {
                 // A transient notice (e.g. "Tokens refilled"): the notch briefly
-                // widens (see RootView.eventPeekSize) into a small banner — a tinted
-                // glyph and the label on the left, a matching pulse on the right.
-                Image(systemName: event.symbol)
-                    .font(.system(size: art * 0.58, weight: .semibold))
-                    .foregroundStyle(eventTint(event))
-                    .frame(width: art, height: art)
-                Text(event.text)
-                    .font(.system(size: art * 0.44, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .fixedSize()
-                    .padding(.leading, Spacing.sm)
-                Spacer(minLength: hInset)
-                PulseDot(color: eventTint(event), diameter: art * 0.5)
+                // widens (see RootView.collapsedBodySize) into a small banner. A refill
+                // ("tokens back") gets the dot-matrix charge display; every other notice
+                // gets the plain tinted glyph + label + pulse.
+                if event.kind == .refill {
+                    RefillPeek(text: event.text, art: art, hInset: hInset)
+                        // Fresh identity per flash so the charge sweep replays every refill.
+                        .id(vm.collapsedEventSeq)
+                } else {
+                    Image(systemName: event.symbol)
+                        .font(.system(size: art * 0.58, weight: .semibold))
+                        .foregroundStyle(eventTint(event))
+                        .frame(width: art, height: art)
+                    Text(event.text)
+                        .font(.system(size: art * 0.44, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.leading, Spacing.sm)
+                    Spacer(minLength: hInset)
+                    PulseDot(color: eventTint(event), diameter: art * 0.5)
+                }
             } else if vm.transferActive {
                 Image(systemName: "dot.radiowaves.up.forward")
                     .font(.system(size: art * 0.55, weight: .semibold))
@@ -556,6 +563,137 @@ struct CollapsedMediaView: View {
             RoundedRectangle(cornerRadius: art * 0.28, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
         }
+    }
+}
+
+/// The refill banner — shown in the collapsed pill only when tokens come *back* (the
+/// 5-hour session or weekly window resets). The banner is an **LED dot-matrix display**
+/// (à la a charging-station sign): a grid of dots lights up column by column, left→right,
+/// as the meter "charges" to full, with a gentle greyscale shimmer through the lit dots
+/// and a softly brighter leading edge sweeping the fill front — while a percentage counts
+/// 0→100 in step. Reads unmistakably as *refilling*, not a static glyph. Honors Reduce
+/// Motion (all dots lit, still, no sweep). One-shot: it plays once on appear, then the
+/// pill settles back after the event's dwell (see `NotchViewModel.flash`).
+private struct RefillPeek: View {
+    let text: String
+    /// The pill's inner content height — sizes the glyph/label to match the other peeks.
+    let art: CGFloat
+    /// Horizontal breathing room at the edges, matching the sibling peeks.
+    let hInset: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// When the charge started, stamped on first appearance so the fill + shimmer are
+    /// driven off elapsed time (smooth and redraw-proof) rather than a state animation.
+    @State private var start: Date?
+
+    /// How long the dot matrix takes to charge from empty to full before it holds.
+    private let fillDuration: TimeInterval = 1.3
+
+    var body: some View {
+        Group {
+            if reduceMotion {
+                frame(level: 1, t: 0, pct: 100)
+            } else {
+                TimelineView(.animation) { ctx in
+                    let t = start.map { ctx.date.timeIntervalSince($0) } ?? 0
+                    let level = fillLevel(t)
+                    frame(level: level, t: t, pct: Int((level * 100).rounded()))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: art)
+        .onAppear { if start == nil { start = Date() } }
+    }
+
+    /// Charge fraction 0…1 over `fillDuration` (ease-out), then holds full.
+    private func fillLevel(_ t: TimeInterval) -> CGFloat {
+        guard t > 0 else { return 0 }
+        let x = min(1, t / fillDuration)
+        return 1 - pow(1 - x, 3)
+    }
+
+    /// One rendered frame: the dot-matrix behind the label layer. The banner height is
+    /// exactly `art`, so the clip is a plain capsule.
+    @ViewBuilder private func frame(level: CGFloat, t: TimeInterval, pct: Int) -> some View {
+        ZStack {
+            Canvas { ctx, size in drawMatrix(ctx, size, level: level, t: t) }
+                .clipShape(Capsule())
+            content(pct: pct)
+        }
+    }
+
+    /// The lit-dot palette: a restrained monochrome wash — bright off-white easing to a
+    /// soft grey across the display — rather than a saturated colour, so the charge reads
+    /// as a calm greyscale LED sign on the black notch.
+    private static let dotColors: [Color] = [Color(white: 0.92), Color(white: 0.5)]
+
+    /// Paints the LED grid: dots left of the charge front are lit (with a gentle
+    /// travelling shimmer + a softly brighter column at the front), dots ahead of it stay
+    /// dim so the matrix reads as a display even before it fills. The lit dots are shaded
+    /// by a subtle left→right gradient; brightness is applied per-dot via layer opacity.
+    private func drawMatrix(_ ctx: GraphicsContext, _ size: CGSize, level: CGFloat, t: TimeInterval) {
+        let pitch = max(4, art * 0.20)                       // dot-to-dot spacing
+        let radius = pitch * 0.34
+        let cols = max(1, Int(size.width / pitch))
+        let rows = max(1, Int(size.height / pitch))
+        let ox = (size.width - CGFloat(cols) * pitch) / 2 + pitch / 2
+        let oy = (size.height - CGFloat(rows) * pitch) / 2 + pitch / 2
+
+        // One coherent gradient spanning the whole banner; every dot samples its own
+        // position, so the grid shows a single subtle off-white→grey wash.
+        let shading = GraphicsContext.Shading.linearGradient(
+            Gradient(colors: Self.dotColors),
+            startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: size.width, y: 0))
+
+        var g = ctx
+        for c in 0..<cols {
+            let cx = cols == 1 ? 0 : CGFloat(c) / CGFloat(cols - 1)   // 0…1 across width
+            let lit = cx <= level + 0.0001
+            let atFront = abs(cx - level) < (1.2 / CGFloat(cols))
+            let x = ox + CGFloat(c) * pitch                          // column-invariant
+            for r in 0..<rows {
+                let y = oy + CGFloat(r) * pitch
+                var b: Double
+                if lit {
+                    // Gentle drift: a low-contrast brightness wave rolling up the columns.
+                    // Kept in a mid-grey range so the white label stays crisp over the dots.
+                    let wave = 0.5 + 0.5 * sin(Double(r) * 0.8 - t * 3 + Double(c) * 0.14)
+                    b = 0.48 + 0.16 * wave                   // ~0.48…0.64, calm grey
+                    if atFront { b = 0.75 }                  // softly brighter leading edge
+                } else {
+                    b = atFront ? 0.26 : 0.1                 // faint pre-glow at the front
+                }
+                let rect = CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)
+                g.opacity = b
+                g.fill(Path(ellipseIn: rect), with: shading)
+            }
+        }
+    }
+
+    /// The label layer riding on top of the matrix: a leading bolt (energy back), the
+    /// message, and the climbing percentage — kept legible over the LEDs with a soft
+    /// shadow. The counter is the clearest "refilling" signal.
+    @ViewBuilder private func content(pct: Int) -> some View {
+        HStack(spacing: 0) {
+            Image(systemName: "bolt.fill")
+                .font(.system(size: art * 0.5, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: art, height: art)
+            Text(text)
+                .font(.system(size: art * 0.44, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.leading, Spacing.xs)
+            Spacer(minLength: hInset)
+            Text("\(pct)%")
+                .font(.system(size: art * 0.46, weight: .bold).monospacedDigit())
+                .foregroundStyle(.white)
+                .contentTransition(.numericText())
+                .fixedSize()
+        }
+        .padding(.horizontal, art * 0.1)
+        .shadow(color: .black.opacity(0.6), radius: 2, y: 0.5)
     }
 }
 

@@ -98,7 +98,7 @@ final class FuelEventMonitor: ObservableObject {
         guard let last = lastSessionUsed else { return } // first sample: just seed
 
         if last >= refillWasAbove && current <= refillNowBelow {
-            onEvent?(.init(symbol: "fuelpump.fill", text: "Tokens refilled", tintHex: "34C759"))
+            onEvent?(.init(symbol: "fuelpump.fill", text: "Tokens refilled", tintHex: "34C759", kind: .refill))
         } else if last < lowThreshold && current >= lowThreshold {
             onEvent?(.init(symbol: "exclamationmark.triangle.fill", text: "Tokens running low", tintHex: "FF9F0A"))
         }
@@ -117,7 +117,7 @@ final class FuelEventMonitor: ObservableObject {
         if last < maxedThreshold && current >= maxedThreshold {
             onEvent?(.init(symbol: "calendar.badge.exclamationmark", text: "Weekly limit reached", tintHex: "FF453A"))
         } else if last >= refillWasAbove && current <= refillNowBelow {
-            onEvent?(.init(symbol: "calendar", text: "Weekly limit reset", tintHex: "34C759"))
+            onEvent?(.init(symbol: "calendar", text: "Weekly limit reset", tintHex: "34C759", kind: .refill))
         }
     }
 
