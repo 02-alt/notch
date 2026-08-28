@@ -28,11 +28,16 @@ struct CountdownTabView: View {
     var body: some View {
         VStack(spacing: Spacing.base) {
             header
-            // The add form is static — keep it out of the ticking TimelineView so
-            // the month grid isn't rebuilt (and its DatePicker re-diffed) every second.
-            if isAdding { addForm }
-            TimelineView(.periodic(from: .now, by: 1.0)) { context in
-                content(now: context.date)
+            if isAdding {
+                // The add form is static (no per-second ticking) and taller than the
+                // list, so give it the whole body in a ScrollView — the month grid
+                // fits without scrolling in the common case, but the Add button stays
+                // reachable whatever the month or locale's row count.
+                ScrollView(.vertical, showsIndicators: false) { addForm }
+            } else {
+                TimelineView(.periodic(from: .now, by: 1.0)) { context in
+                    content(now: context.date)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -171,7 +176,7 @@ struct CountdownTabView: View {
     // MARK: Add form
 
     private var addForm: some View {
-        VStack(spacing: Spacing.base) {
+        VStack(spacing: Spacing.sm) {
             HStack(spacing: Spacing.sm) {
                 Image(systemName: "hourglass")
                     .font(.system(size: 12, weight: .semibold))
@@ -296,6 +301,10 @@ private struct MonthCalendar: View {
     private let cal = Calendar.current
     private let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.hair), count: 7)
 
+    /// Row height for a day cell — kept compact so the whole month (up to 6 rows)
+    /// plus the title field and time/Add row fit inside the tab's fixed body height.
+    private static let cellHeight: CGFloat = 26
+
     init(selection: Binding<Date>, accent: Color) {
         _selection = selection
         self.accent = accent
@@ -303,16 +312,16 @@ private struct MonthCalendar: View {
     }
 
     var body: some View {
-        VStack(spacing: Spacing.sm) {
+        VStack(spacing: Spacing.s) {
             monthBar
             weekdayRow
             LazyVGrid(columns: columns, spacing: Spacing.hair) {
                 ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
-                    if let day { dayCell(day) } else { Color.clear.frame(height: 30) }
+                    if let day { dayCell(day) } else { Color.clear.frame(height: Self.cellHeight) }
                 }
             }
         }
-        .padding(Spacing.sm)
+        .padding(Spacing.s)
         .glassCard(cornerRadius: 12)
     }
 
@@ -370,7 +379,7 @@ private struct MonthCalendar: View {
                 .foregroundStyle(isSelected ? accent.readableForeground
                                  : isToday ? accent : Theme.primaryText)
                 .frame(maxWidth: .infinity)
-                .frame(height: 30)
+                .frame(height: Self.cellHeight)
                 .background { shape.fill(isSelected ? accent : .clear) }
                 .overlay {
                     if isToday && !isSelected {

@@ -122,8 +122,10 @@ enum Metrics {
     static let nowHeight: CGFloat = 400
 
     /// Taller body for the Countdown tab: a hero "days remaining" block over a
-    /// scrolling list of the other pinned dates. Kept below `moodExpandedHeight`.
-    static let countdownHeight: CGFloat = 400
+    /// scrolling list of the other pinned dates — sized so the tallest state, the
+    /// add form with its month calendar, fits without scrolling (the list state
+    /// just gets more breathing room). Kept below `moodExpandedHeight`.
+    static let countdownHeight: CGFloat = 470
 
     /// Taller body for the Shortcuts tab: a grid of launch tiles plus the inline
     /// "new shortcut" editor. Kept below `moodExpandedHeight`.
