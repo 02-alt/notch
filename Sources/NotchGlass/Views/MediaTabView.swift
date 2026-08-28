@@ -120,12 +120,17 @@ struct MediaTabView: View {
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
+                        // Keep the title (and artist) clear of the floating PiP button
+                        // in the top-right, so a long title truncates instead of
+                        // sliding underneath it.
+                        .padding(.trailing, np.supportsPiP ? Spacing.xl : 0)
 
                     Text(np.artist.isEmpty ? "—" : np.artist)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.85))
                         .lineLimit(1)
                         .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
+                        .padding(.trailing, np.supportsPiP ? Spacing.xl : 0)
 
                     Spacer(minLength: 6)
 

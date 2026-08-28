@@ -25,7 +25,8 @@ VOL="All in a notch"
 ./build-app.sh release
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
-DMG="NotchGlass-${VERSION}.dmg"
+# Ship the disk image under the app's user-facing name.
+DMG="allinanotch.dmg"
 
 echo "▸ Signing with Developer ID (hardened runtime)…"
 codesign --force --options runtime --timestamp \
