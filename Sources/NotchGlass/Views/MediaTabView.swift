@@ -105,52 +105,52 @@ struct MediaTabView: View {
     // MARK: - Foreground content
 
     private var content: some View {
-        HStack(alignment: .top, spacing: Spacing.lg) {
-            // Left column: the cover, with the running-source chips tucked into the
-            // space beneath it (freed up now that the cover top-aligns to the title).
-            if settings.showArtwork || np.runningSources.count > 1 {
-                VStack(alignment: .leading, spacing: Spacing.md) {
-                    if settings.showArtwork { artwork }
-                    sourcePicker
-                    Spacer(minLength: 0)
+        VStack(spacing: Spacing.s) {
+            HStack(alignment: .top, spacing: Spacing.lg) {
+                // Left column: just the cover. The bottom row spans the full panel
+                // width below (see `controls`), so the source chips ride the far-left
+                // inset in line with the artwork — not tucked under it.
+                if settings.showArtwork {
+                    artwork
                 }
-                .frame(width: settings.showArtwork ? 108 : nil, alignment: .leading)
-            }
 
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text(np.title.uppercased())
-                    .font(.system(size: 14, weight: .heavy))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
+                VStack(alignment: .leading, spacing: Spacing.xs) {
+                    Text(np.title.uppercased())
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
 
-                Text(np.artist.isEmpty ? "—" : np.artist)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(1)
-                    .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
+                    Text(np.artist.isEmpty ? "—" : np.artist)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(1)
+                        .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
 
-                Spacer(minLength: 6)
+                    Spacer(minLength: 6)
 
-                if np.isLive {
-                    liveIndicator
-                } else {
-                    Scrubber(tint: tint)
+                    if np.isLive {
+                        liveIndicator
+                    } else {
+                        Scrubber(tint: tint)
 
-                    HStack {
-                        Text(Self.time(np.position))
-                        Spacer()
-                        Text(Self.time(np.duration))
+                        HStack {
+                            Text(Self.time(np.position))
+                            Spacer()
+                            Text(Self.time(np.duration))
+                        }
+                        .font(.system(size: 10, weight: .medium).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.8))
+                        .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
                     }
-                    .font(.system(size: 10, weight: .medium).monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.8))
-                    .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
                 }
-
-                Spacer(minLength: 2)
-
-                controls
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
+            .frame(maxHeight: .infinity)
+
+            // Full-width bottom row: sources · playback · volume, sharing one baseline
+            // edge-to-edge across the whole panel.
+            controls
         }
         .padding(Spacing.lg)
     }
@@ -200,9 +200,9 @@ struct MediaTabView: View {
         .frame(height: 14)
     }
 
-    /// The transport row: previous / play / next kept tight in the centre (like Apple
-    /// Music), with the volume glyph out at the right edge. The source pickers now live
-    /// under the cover, so this row is just about playback.
+    /// The full-width bottom row: previous / play / next kept tight and centred across
+    /// the whole panel (like Apple Music), with the source-picker chips pinned to the
+    /// left inset and the volume glyph to the right — all sharing one centred baseline.
     private var controls: some View {
         ZStack {
             HStack(spacing: Spacing.lg) {
@@ -218,8 +218,10 @@ struct MediaTabView: View {
                         .disabled(!np.hasTrack).opacity(np.hasTrack ? 1 : 0.4)
                 }
             }
-            // Volume pinned to the right without shifting the centred transport.
+            // Sources on the left, volume on the right — pinned to the edges and
+            // vertically centred on the transport, without shifting the centred row.
             HStack {
+                sourcePicker
                 Spacer()
                 volumeControl
             }
@@ -227,9 +229,9 @@ struct MediaTabView: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// The running-source pickers, tucked under the cover: one app-icon chip per open
-    /// player (Music, Spotify, a browser…), the active one highlighted — tap to switch.
-    /// Only shown when more than one player is open (nothing to pick between otherwise).
+    /// The running-source pickers on the left of the transport row: one app-icon chip
+    /// per open player (Music, Spotify, a browser…), the active one highlighted — tap to
+    /// switch. Only shown when more than one player is open (nothing to pick otherwise).
     @ViewBuilder private var sourcePicker: some View {
         if np.runningSources.count > 1 {
             HStack(spacing: Spacing.sm) {
