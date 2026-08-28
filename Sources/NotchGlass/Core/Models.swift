@@ -281,8 +281,8 @@ enum PanelTheme: String, CaseIterable, Identifiable {
     /// `Theme` palette (see ``Theme/isLight``).
     var isLight: Bool { self == .light }
 
-    /// The Noir surface: a deep near-black panel with a single baked-in ember
-    /// accent. Still a dark (white-on-black) scheme, so it doesn't set
+    /// The Noir surface: a deep near-black panel with monochrome near-white chrome.
+    /// Still a dark (white-on-black) scheme, so it doesn't set
     /// ``isLight``; it drives ``Theme/isNoir`` for the surface + accent choice.
     var isNoir: Bool { self == .noir }
 }

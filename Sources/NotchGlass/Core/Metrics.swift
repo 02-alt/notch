@@ -59,7 +59,7 @@ enum Metrics {
         // Media lost the collapsed-notch group to its own tab, so it's lighter now;
         // Notch carries the fuel-event card with its three-line caption, so it stays tall.
         case .media:      return 392
-        case .notch:      return 430
+        case .notch:      return 480
         }
     }
 
@@ -90,10 +90,11 @@ enum Metrics {
     /// the fixed window never has to grow to hold it.
     static let weatherHeight: CGFloat = 476
 
-    /// Taller body for the Calendar tab so a comfortable stretch of the upcoming
-    /// agenda is visible before it needs scrolling. Kept below `moodExpandedHeight`
-    /// so the fixed window never has to grow to hold it.
-    static let calendarHeight: CGFloat = 360
+    /// Taller body for the Calendar tab: the hero, a full six-week month grid, the
+    /// quick-add bar and the selected day's agenda all stack vertically, so it needs
+    /// generous height. Kept below `moodExpandedHeight` so the fixed window never
+    /// has to grow to hold it.
+    static let calendarHeight: CGFloat = 500
 
     /// Taller body for the AI Scratch tab so a useful stretch of the conversation
     /// transcript plus the input bar are visible at once. Kept below
@@ -264,20 +265,16 @@ enum Theme {
     nonisolated(unsafe) static var isLight = false
 
     /// True while the Noir surface is active. Like ``isLight`` it's a structural
-    /// flag (deep-black panel + baked ember accent), but Noir is still a dark
+    /// flag (deep-black panel + monochrome near-white accent), but Noir is still a dark
     /// white-on-black scheme, so it does *not* flip ``colorScheme``. Written by
     /// ``SettingsStore``; read only on the main thread inside SwiftUI `body`.
     nonisolated(unsafe) static var isNoir = false
 
-    /// Noir's baked-in accent — a *muted* burnt-orange ember. Deliberately quieter
-    /// than a saturated orange so it reads as the single, restrained point of
-    /// colour in an otherwise monochrome, Analogue-minimal space. ~#BC4F2E.
-    static let ember = Color(red: 0.737, green: 0.310, blue: 0.180)
-
     /// The palette-level accent used by chrome that doesn't read the user accent
-    /// (currently just the open-morph sheen). Ember under Noir, the neutral blue
-    /// otherwise. The user-configurable accent lives on ``SettingsStore/accent``.
-    static var accent: Color { isNoir ? ember : Color(red: 0.30, green: 0.52, blue: 0.98) }
+    /// (currently just the open-morph sheen). Neutral near-white under Noir (which is
+    /// a pure black-and-white scheme), the neutral blue otherwise. The
+    /// user-configurable accent lives on ``SettingsStore/accent``.
+    static var accent: Color { isNoir ? Color(white: 0.93) : Color(red: 0.30, green: 0.52, blue: 0.98) }
 
     /// A color that resolves differently under dark vs. light appearance. SwiftUI
     /// resolves it against the current `colorScheme` environment, so pinning a

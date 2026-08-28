@@ -77,6 +77,14 @@ final class SettingsStore: ObservableObject {
         didSet { defaults.set(collapsedResting.rawValue, forKey: "set.collapsedResting") }
     }
 
+    /// Fuel resting glance: show the refill countdown **and** the % left together as
+    /// one "↻ 3:45 · 88%" readout, instead of rotating between them. Off by default
+    /// (the rotation keeps the pill text short); opt-in for people who'd rather see
+    /// both at once.
+    @Published var collapsedFuelCombined: Bool {
+        didSet { defaults.set(collapsedFuelCombined, forKey: "set.collapsedFuelCombined") }
+    }
+
     @Published var defaultTab: NotchTab {
         didSet { defaults.set(defaultTab.rawValue, forKey: "set.defaultTab") }
     }
@@ -178,9 +186,8 @@ final class SettingsStore: ObservableObject {
     var accent: Color {
         // The Analogue themes are monochrome: the "accent" that most chrome reads
         // (selected fills, tints, icons) is a neutral — near-white on Noir's black,
-        // near-black on the Light surface — so the whole app stays black-and-white.
-        // The ember (`Theme.ember`) is reintroduced only at a few deliberate spots
-        // (the Ask field's caret + send), keeping colour rare the way Analogue does.
+        // near-black on the Light surface — so the whole app stays black-and-white,
+        // with no coloured accent at all.
         switch panelTheme {
         case .noir:  return Color(white: 0.93)
         case .light: return Color(white: 0.16)
@@ -206,6 +213,7 @@ final class SettingsStore: ObservableObject {
         collapsedShowsFuelEvents = defaults.object(forKey: "set.collapsedShowsFuelEvents") as? Bool ?? false
         dynamicIsland = defaults.object(forKey: "set.dynamicIsland") as? Bool ?? false
         collapsedResting = CollapsedResting(rawValue: defaults.string(forKey: "set.collapsedResting") ?? "") ?? .none
+        collapsedFuelCombined = defaults.object(forKey: "set.collapsedFuelCombined") as? Bool ?? false
         defaultTab = NotchTab(rawValue: defaults.string(forKey: "set.defaultTab") ?? "") ?? .media
         if let raw = defaults.array(forKey: "set.enabledTabs") as? [String] {
             let tabs = raw.compactMap { NotchTab(rawValue: $0) }

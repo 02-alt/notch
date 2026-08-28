@@ -243,6 +243,13 @@ struct NotchSettingsView: View {
             SettingColumn("Show", icon: "moon.stars", caption: restingCaption) {
                 restingGrid
             }
+            if settings.collapsedResting == .fuel {
+                SettingRow("Show both", icon: "rectangle.split.2x1",
+                           caption: "Show the refill countdown and % left together as one “↻ 3:45 · 88%” readout, instead of taking turns.") {
+                    NotchToggle(isOn: $settings.collapsedFuelCombined, accent: settings.accent,
+                                label: "Show refill time and % together")
+                }
+            }
         }
     }
 
@@ -592,12 +599,12 @@ struct NotchSettingsView: View {
         }
     }
 
-    /// The accent each tile previews. The Analogue themes hint their rare ember
-    /// (Noir) or their dark monochrome chrome (Light); the others show the user's
+    /// The accent each tile previews. The Analogue themes are monochrome — near-white
+    /// chrome on Noir's black, dark chrome on Light; the others show the user's
     /// configured accent.
     private func previewAccent(for theme: PanelTheme) -> Color {
         switch theme {
-        case .noir:  return Theme.ember
+        case .noir:  return Color(white: 0.93)
         case .light: return Color(white: 0.16)
         default:     return settings.accent
         }

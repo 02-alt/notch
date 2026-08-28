@@ -46,6 +46,26 @@ final class FuelEventMonitor: ObservableObject {
     /// gentle to stay off the network / keychain most of the time.
     private let interval: TimeInterval = 120
 
+    /// Fuel remaining (0…1) for the collapsed gauge, treating a window whose reset
+    /// time has already passed as **refilled** (full). The endpoint rate-limits hard,
+    /// and `handle` only updates on a successful poll — so a run of 429s across a
+    /// session reset can otherwise leave `sessionUsed` pinned at the old, near-empty
+    /// reading. Once the stored `resetsAt` is in the past the window has certainly
+    /// rolled over, so report full rather than that stale value. Returns nil until the
+    /// first successful reading. `now` is passed in so a `TimelineView` re-evaluates it.
+    func remaining(now: Date = Date()) -> Double? {
+        guard let used = sessionUsed else { return nil }
+        if let reset = sessionResetsAt, reset <= now { return 1 }
+        return max(0, 1 - used)
+    }
+
+    /// The upcoming session refill instant, or nil once it's in the past (there's
+    /// nothing left to count down to — the window has refilled).
+    func upcomingReset(now: Date = Date()) -> Date? {
+        guard let reset = sessionResetsAt, reset > now else { return nil }
+        return reset
+    }
+
     // Thresholds: a refill is a big drop back toward empty; "low" is crossing 90%;
     // a window is "maxed" once it's essentially at 100%.
     private let refillWasAbove = 0.40
@@ -124,15 +144,19 @@ final class FuelEventMonitor: ObservableObject {
     /// Extra-usage credits: fires once, when the first credit is spent — i.e. you've
     /// gone past the included limits and are now paying for overage.
     private func handleCredits(_ credits: LiveCredits?) {
-        // Surface the live spend for the peek whenever we're actually on credits
-        // (spend > 0), regardless of whether the transition event ever fires.
-        if let credits, credits.used > 0 {
+        // Surface the live spend for the peek only while you're *actually on credits*
+        // right now — extra usage switched on (`enabled`) with spend recorded — i.e.
+        // you've used up your plan tokens and are paying overage. Cumulative spend from
+        // a past overage, when you're back on plan tokens (extra usage off), shouldn't
+        // clutter the idle notch.
+        guard let credits else { creditsUsed = nil; return }
+        if credits.enabled, credits.used > 0 {
             creditsUsed = credits.used
             creditsSymbol = FuelManager.currencySymbol(credits.currency)
         } else {
             creditsUsed = nil
         }
-        guard let credits, credits.everEnabled else { return }
+        guard credits.everEnabled else { return }
         let used = credits.used
         defer { lastCreditsUsed = used }
         guard let last = lastCreditsUsed else { return }

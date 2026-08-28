@@ -275,14 +275,11 @@ struct CollapsedMediaView: View {
     /// gauge/readout on the right, camera cutout kept clear between them — the same
     /// two-edge shape as the media and timer peeks.
     @ViewBuilder private var restingPeek: some View {
-        if settings.collapsedResting == .fuel, let used = fuel.sessionUsed {
+        if settings.collapsedResting == .fuel, fuel.sessionUsed != nil {
             // Fuel mirrors ClaudeFuel's menu-bar item: a round "tank" gauge hugging the
-            // left edge, and a compact readout on the right that rotates through the
-            // stats — anchored on the session refill countdown, with % left, credits
-            // and the weekly reset cycling in (see `fuelReadout`).
-            FuelTank(fraction: max(0, 1 - used), color: fuelHealth(max(0, 1 - used)), size: art * 0.62)
-            Spacer(minLength: hInset)
-            fuelReadout
+            // left edge and a rotating readout on the right — the session refill
+            // countdown anchored, with % left, credits and the weekly reset cycling in.
+            fuelGlance(compact: false)
                 .frame(height: art)
         } else {
             Image(systemName: restingSymbol)
@@ -298,18 +295,11 @@ struct CollapsedMediaView: View {
     @ViewBuilder private var restingValue: some View {
         switch settings.collapsedResting {
         case .fuel:
-            // Compact glance used alongside now-playing media (right edge only): the
-            // tank gauge with the % left beside it, no rotation.
-            if let used = fuel.sessionUsed {
-                let remaining = max(0, 1 - used)
-                HStack(spacing: art * 0.24) {
-                    FuelTank(fraction: remaining, color: fuelHealth(remaining), size: art * 0.62)
-                    Text("\(Int((remaining * 100).rounded()))%")
-                        .font(.system(size: art * 0.38, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .fixedSize()
-                }
+            // Compact glance alongside now-playing media (right edge only): the same
+            // rotating readout the idle pill uses — so the session refill countdown
+            // still cycles in while a track plays, not a pinned static "% left".
+            if fuel.sessionUsed != nil {
+                fuelGlance(compact: true)
             }
         case .battery:
             if let charge = battery.charge {
@@ -410,64 +400,145 @@ struct CollapsedMediaView: View {
         return (fraction, Int((fraction * 100).rounded()))
     }
 
-    /// The rotating right-edge readout for the resting fuel peek — the notch's take on
-    /// ClaudeFuel's menu-bar text. There's only room for one short string beside the
-    /// tank, so it cycles: the **session refill countdown** is the anchor (shown every
-    /// other slot, so it's the thing you mostly see), with **% left**, the live
-    /// **credits** spend (only once you're on credits), and the **weekly reset** (only
-    /// once the weekly limit is reached) rotating through between its turns.
-    private var fuelReadout: some View {
+    /// The resting fuel glance — the notch's take on ClaudeFuel's menu-bar item: a
+    /// round "tank" on the left and a rotating readout that cycles the **session refill
+    /// countdown** (the anchor, shown every other slot), **% left**, the live
+    /// **credits** spend (only while on credits) and the **weekly reset** (only once the
+    /// week maxes out). One `TimelineView` drives both so `remaining` and the card/text
+    /// are computed once per tick. `compact` clusters the pair on the right (beside
+    /// playing media); otherwise they hug opposite pill edges, camera cutout between.
+    @ViewBuilder private func fuelGlance(compact: Bool) -> some View {
         // Tick every second: the countdown text needs it, and the ~3s card rotation is
         // derived from absolute time so it never jumps when the view redraws.
         TimelineView(.periodic(from: .now, by: 1)) { ctx in
-            let cards = fuelCards
-            let idx = cards.isEmpty ? 0
-                : Int(ctx.date.timeIntervalSinceReferenceDate / 3) % cards.count
-            let card = cards.isEmpty ? FuelCard.percent(fuel.sessionUsed.map { 1 - $0 } ?? 0)
-                                     : cards[idx]
-            Text(fuelText(card, now: ctx.date))
+            let left = fuel.remaining(now: ctx.date) ?? 0
+            let card = currentFuelCard(now: ctx.date, remaining: left)
+            let text = fuelText(card, now: ctx.date)
+            let tank = FuelTank(fraction: left, color: fuelHealth(left), size: art * 0.62)
+            let base = Text(text)
                 .font(.system(size: art * 0.38, weight: .semibold).monospacedDigit())
-                .foregroundStyle(fuelTint(card))
                 .lineLimit(1)
-                // Wide readouts (credits, the weekly Nd Hh) shrink to fit the bare
-                // notch rather than overflow toward the camera cutout; the frame keeps
-                // the text hugging the right edge, mirroring the left-edge tank.
-                .minimumScaleFactor(0.4)
-                .frame(maxWidth: art * 3.4, alignment: .trailing)
-                .contentTransition(.numericText())
-                .animation(.easeInOut(duration: 0.25), value: fuelText(card, now: ctx.date))
+                .minimumScaleFactor(compact ? 0.5 : 0.4)
+                .contentTransition(.numericText())   // digits tick in place within a card
+            let readout = Group {
+                if Self.isLuckyNumber(text) {
+                    // 22% / 2:22 — the celebratory gold shine (see LuckyShine).
+                    base.modifier(LuckyShine(art: art))
+                } else {
+                    base.foregroundStyle(fuelTint(card))
+                }
+            }
+            .id(card.stateID)                     // a card switch is a fresh view →
+            .transition(.blurReplace)             // …that blurs the old out, the new in
+            .animation(.easeInOut(duration: 0.25), value: text)        // countdown tick
+            Group {
+                if compact {
+                    // Beside album art: cluster the tank and readout and size to content so
+                    // the tank hugs the number — no reserved-width gap when the readout is
+                    // short (e.g. a bare "62%" after the combined "↻ · %" is turned off).
+                    HStack(spacing: art * 0.24) { tank; readout }
+                        .fixedSize()
+                } else {
+                    // Idle pill: tank on the left edge, readout hugging the right edge, with
+                    // a width cap so wide readouts (credits, weekly Nd Hh, combined "↻ · %")
+                    // shrink to fit rather than cross the camera cutout.
+                    HStack(spacing: 0) {
+                        tank
+                        Spacer(minLength: hInset)
+                        readout.frame(maxWidth: art * 3.4, alignment: .trailing)
+                    }
+                }
+            }
+            // The card-to-card switch (↻ countdown → % → credits) morphs subtly: this
+            // transaction on the *parent* is what lets the readout's `.transition` fire
+            // and eases the readout's width change — without it a TimelineView tick isn't
+            // an animated transaction, so the swap snaps. Keyed on `card.stateID` so only
+            // a real card change animates, never the per-second countdown tick.
+            .animation(.easeInOut(duration: 0.35), value: card.stateID)
         }
     }
 
     /// One readout the fuel peek can rotate to.
     private enum FuelCard: Equatable {
-        case reset(Date)      // session refill countdown (↻) — the anchor
-        case percent(Double)  // fuel left, 0…1
-        case credits          // extra-usage spend (⚡)
-        case weekly(Date)     // weekly reset countdown, only once the week maxes out
+        case reset(Date)            // session refill countdown (↻) — the anchor
+        case percent(Double)        // fuel left, 0…1
+        case credits                // extra-usage spend (⚡)
+        case weekly(Date)           // weekly reset countdown, only once the week maxes out
+        case combined(Date, Double) // "↻ 3:45 · 88%" — countdown and % left together
+
+        /// Identity by *state*, ignoring the ticking value — so digits tick in place
+        /// (numericText) within a card, but switching cards is a fresh view that can
+        /// cross-fade (blurReplace) instead of morphing "↻ 3:45" into "88%".
+        var stateID: Int {
+            switch self {
+            case .reset:    return 0
+            case .percent:  return 1
+            case .credits:  return 2
+            case .weekly:   return 3
+            case .combined: return 4
+            }
+        }
+    }
+
+    /// How long each fuel card holds before the readout rotates to the next.
+    private static let fuelCardDwell: TimeInterval = 5
+
+    /// The card to show at `now`: the cards interleave the refill countdown between
+    /// every other stat, and the slot advances every `fuelCardDwell` seconds off
+    /// absolute time so it never jumps when the view redraws. `remaining` is passed in
+    /// so it's computed once.
+    private func currentFuelCard(now: Date, remaining: Double) -> FuelCard {
+        let cards = fuelCards(now: now, remaining: remaining)
+        guard !cards.isEmpty else { return .percent(remaining) }
+        return cards[Int(now.timeIntervalSinceReferenceDate / Self.fuelCardDwell) % cards.count]
     }
 
     /// The cards to cycle through, given what data we have. The reset countdown is
-    /// interleaved between every other card so it stays the dominant readout.
-    private var fuelCards: [FuelCard] {
-        var extras: [FuelCard] = []
-        if let used = fuel.sessionUsed { extras.append(.percent(max(0, 1 - used))) }
-        if fuel.creditsUsed != nil { extras.append(.credits) }
-        // "Weekly limit reached": the weekly window is essentially maxed out.
-        if let week = fuel.weekUsed, week >= 0.99, fuel.weekResetsAt != nil {
-            extras.append(.weekly(fuel.weekResetsAt!))
+    /// interleaved between every other card so it stays the dominant readout — and both
+    /// countdowns drop out once their reset has passed (window refilled), leaving just
+    /// "% left", so a stale reading pinned by rate-limited polls never shows "↻ 0:00".
+    private func fuelCards(now: Date, remaining: Double) -> [FuelCard] {
+        let reset = fuel.upcomingReset(now: now)
+
+        // Cards that rotate through regardless of mode: credits (while on credits) and
+        // the weekly reset (only once the week maxes out and its reset still lies ahead).
+        var secondary: [FuelCard] = []
+        if fuel.creditsUsed != nil { secondary.append(.credits) }
+        if let week = fuel.weekUsed, week >= 0.99,
+           let weekReset = fuel.weekResetsAt, weekReset > now {
+            secondary.append(.weekly(weekReset))
         }
-        guard let reset = fuel.sessionResetsAt else { return extras }
-        // Interleave: [reset, percent, reset, credits, reset, weekly, …]
-        return extras.flatMap { [FuelCard.reset(reset), $0] }
+
+        // Combined mode (opt-in): one "↻ 3:45 · 88%" anchor showing both at once — or
+        // just "% left" once refilled — with any secondary cards rotating in beside it.
+        if settings.collapsedFuelCombined {
+            let anchor: FuelCard = reset.map { .combined($0, remaining) } ?? .percent(remaining)
+            return Self.interleaving(anchor, through: secondary)
+        }
+
+        // Default: rotate % and the secondary cards, with the refill countdown
+        // interleaved between each so it stays the dominant readout — and it drops out
+        // once the reset has passed, so a stale reading never shows "↻ 0:00". With no
+        // upcoming reset there's no anchor to interleave, so show % and secondaries flat.
+        let base: [FuelCard] = [.percent(remaining)] + secondary
+        guard let reset else { return base }
+        return Self.interleaving(.reset(reset), through: base)
+    }
+
+    /// `[anchor, a, anchor, b, …]` — the anchor card shown before each of `others` so
+    /// it stays the dominant readout. Just `[anchor]` when there's nothing to rotate.
+    private static func interleaving(_ anchor: FuelCard, through others: [FuelCard]) -> [FuelCard] {
+        others.isEmpty ? [anchor] : others.flatMap { [anchor, $0] }
     }
 
     private func fuelText(_ card: FuelCard, now: Date) -> String {
         switch card {
         case .reset(let at):
-            return "↻ " + Self.shortClock(max(0, at.timeIntervalSince(now)))
+            return Self.resetLabel(at, now: now)
         case .percent(let left):
-            return "\(Int((left * 100).rounded()))%"
+            return Self.percentLabel(left)
+        case .combined(let at, let left):
+            return "\(Self.resetLabel(at, now: now)) · \(Self.percentLabel(left))"
         case .credits:
             let amount = fuel.creditsUsed ?? 0
             return "⚡\(fuel.creditsSymbol)\(String(format: "%.2f", amount))"
@@ -476,12 +547,38 @@ struct CollapsedMediaView: View {
         }
     }
 
+    /// "↻ 3:45" — the session refill countdown, clamped so a passed reset shows 0.
+    private static func resetLabel(_ at: Date, now: Date) -> String {
+        "↻ " + shortClock(max(0, at.timeIntervalSince(now)))
+    }
+
+    /// "88%" — whole-percent fuel left.
+    private static func percentLabel(_ left: Double) -> String {
+        "\(Int((left * 100).rounded()))%"
+    }
+
+    /// The readout colour for ordinary cards. The two lucky readouts (22%, 2:22) get their
+    /// own celebratory `LuckyShine` treatment instead (see the fuel glance).
     private func fuelTint(_ card: FuelCard) -> Color {
         switch card {
         case .credits: return Color(hex: "0A84FF") ?? .blue
         case .weekly:  return Color(hex: "FF453A") ?? .red
         default:       return .white
         }
+    }
+
+    /// True only for the two readouts the easter egg celebrates: "22%" (safe as a bare
+    /// substring — percentages never exceed 100, so "22%" is always exactly 22) and a
+    /// standalone "2:22" countdown (rejecting the tail of 12:22, 32:22, … by requiring the
+    /// char before it isn't a digit).
+    private static func isLuckyNumber(_ text: String) -> Bool {
+        if text.contains("22%") { return true }
+        if let r = text.range(of: "2:22") {
+            let before = r.lowerBound == text.startIndex
+                ? nil : text[text.index(before: r.lowerBound)]
+            if before?.isNumber != true { return true }
+        }
+        return false
     }
 
     /// A short session countdown: `h:mm` past an hour, else `m:ss`.
@@ -697,31 +794,121 @@ private struct RefillPeek: View {
     }
 }
 
-/// A small round "fuel tank" — a circle filled from the bottom to `fraction` in the
-/// health color, mirroring ClaudeFuel's menu-bar gauge. The number lives *beside* it
-/// (in the rotating readout), so the tank itself stays a clean, label-free glance.
+/// A small round "fuel tank" — a circle filled from the bottom to `fraction`, mirroring
+/// ClaudeFuel's menu-bar gauge. The fill is a **dot texture**: chunky dots below the fill
+/// line shaded top→bottom in the health colour (green/amber/red), with a slow shimmer
+/// drifting through them so the tank quietly breathes. The number lives *beside* it (in the
+/// rotating readout). Honors Reduce Motion (static dots).
 private struct FuelTank: View {
     /// Fuel remaining, 0…1.
     let fraction: Double
+    /// The health colour (green/amber/red) the dots are shaded in.
     let color: Color
     let size: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let f = max(0, min(1, fraction))
         Circle()
             .fill(Color.white.opacity(0.14))
-            .overlay(
-                GeometryReader { geo in
-                    Rectangle()
-                        .fill(color)
-                        .frame(height: geo.size.height * CGFloat(f))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                }
-                .clipShape(Circle())
-            )
+            .overlay(fill(f).clipShape(Circle()))
             .overlay(Circle().strokeBorder(Color.white.opacity(0.6), lineWidth: max(1, size * 0.08)))
             .frame(width: size, height: size)
-            .animation(.easeInOut(duration: 0.4), value: f)
+    }
+
+    @ViewBuilder private func fill(_ f: CGFloat) -> some View {
+        if reduceMotion {
+            Canvas { ctx, sz in drawDots(ctx, sz, fill: f, t: nil) }
+        } else {
+            // ~12fps is plenty for a gentle drift and far lighter than a 60fps redraw of
+            // this always-on glance.
+            TimelineView(.animation(minimumInterval: 0.08, paused: false)) { ctx in
+                Canvas { g, sz in
+                    drawDots(g, sz, fill: f, t: ctx.date.timeIntervalSinceReferenceDate)
+                }
+            }
+        }
+    }
+
+    /// Fills the region below the surface line with a chunky dot grid, shaded by a vertical
+    /// health-colour gradient and modulated by a slow per-dot brightness wave. `t == nil`
+    /// (Reduce Motion) freezes the shimmer.
+    private func drawDots(_ ctx: GraphicsContext, _ sz: CGSize, fill: CGFloat, t: Double?) {
+        let pitch = max(2.4, sz.height * 0.24)               // ~4 chunky rows
+        let radius = pitch * 0.4
+        let cols = max(1, Int(sz.width / pitch))
+        let rows = max(1, Int(sz.height / pitch))
+        let ox = (sz.width - CGFloat(cols) * pitch) / 2 + pitch / 2
+        let oy = (sz.height - CGFloat(rows) * pitch) / 2 + pitch / 2
+        let surfaceY = sz.height * (1 - fill)                // top of the fluid
+        let shading = GraphicsContext.Shading.linearGradient(
+            Gradient(colors: [color.opacity(0.95), color.opacity(0.5)]),
+            startPoint: CGPoint(x: 0, y: 0), endPoint: CGPoint(x: 0, y: sz.height))
+
+        var g = ctx
+        for r in 0..<rows {
+            let y = oy + CGFloat(r) * pitch
+            if y < surfaceY - radius { continue }            // above the fill → empty
+            for c in 0..<cols {
+                let x = ox + CGFloat(c) * pitch
+                let dot = Path(ellipseIn: CGRect(x: x - radius, y: y - radius,
+                                                 width: radius * 2, height: radius * 2))
+                var wave = 1.0                               // full brightness when static
+                if let t {
+                    let angle = Double(r) * 0.9 - t * 2 + Double(c) * 0.6
+                    wave = 0.5 + 0.5 * sin(angle)            // gentle shimmer
+                }
+                g.opacity = 0.58 + 0.42 * wave
+                g.fill(dot, with: shading)
+            }
+        }
+    }
+}
+
+/// The celebratory treatment for a "lucky" fuel readout (22%, 2:22): gold gradient text
+/// with a soft glow, a slow highlight sweeping across it, and a gentle pulse — so the
+/// number reads as *special*, not merely yellow. Layout-neutral (glow/shine/scale don't
+/// change the text's size), so the glance's clustering + morph logic is unaffected. Honors
+/// Reduce Motion (static gold + glow, no sweep or pulse).
+private struct LuckyShine: ViewModifier {
+    /// The pill's inner content height — scales the glow radius to notch size.
+    let art: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private static let gold = Gradient(colors: [Color(hex: "FFE79A") ?? .yellow,
+                                                Color(hex: "E4A72A") ?? .orange])
+    private var glow: Color { Color(hex: "FFC93C") ?? .yellow }
+
+    func body(content: Content) -> some View {
+        let gilded = content
+            .foregroundStyle(LinearGradient(gradient: Self.gold, startPoint: .top, endPoint: .bottom))
+            .shadow(color: glow.opacity(0.75), radius: art * 0.3)
+        if reduceMotion {
+            gilded
+        } else {
+            TimelineView(.animation) { ctx in
+                let t = ctx.date.timeIntervalSinceReferenceDate
+                gilded
+                    .overlay { shine(t: t).mask(content) }   // highlight, clipped to the glyphs
+                    .scaleEffect(1 + 0.035 * sin(t * 3))     // gentle breathe
+            }
+        }
+    }
+
+    /// A soft white highlight band sweeping left→right across the glyphs, ~once every 2.6s.
+    @ViewBuilder private func shine(t: Double) -> some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let band = max(6, w * 0.5)
+            let period = 2.6
+            let p = t.truncatingRemainder(dividingBy: period) / period   // 0…1
+            LinearGradient(colors: [.clear, .white.opacity(0.85), .clear],
+                           startPoint: .leading, endPoint: .trailing)
+                .frame(width: band)
+                .offset(x: -band + p * (w + band))                       // sweep L→R
+                .blendMode(.plusLighter)
+        }
+        .allowsHitTesting(false)
     }
 }
 

@@ -466,9 +466,9 @@ private struct PrismStreak: View {
 /// by the caller.
 private struct LightPanelSurface: View {
     var body: some View {
-        // Analogue-white: a flat, clean off-white gallery surface — near-monochrome,
+        // Analogue-white: a flat, clean off-white gallery surface — monochrome,
         // with only the faintest fall-off for depth. Dark content reads on top; the
-        // ember stays a rare deliberate accent, mirroring the Noir treatment.
+        // chrome stays pure black-and-white, mirroring the Noir treatment.
         LinearGradient(colors: [Color(white: 0.975), Color(white: 0.955)],
                        startPoint: .top, endPoint: .bottom)
     }
@@ -476,8 +476,8 @@ private struct LightPanelSurface: View {
 
 /// The deep near-black fill for the Noir theme's expanded panel. A flat, matte
 /// near-black — no sheen, no accent wash, only the faintest top-to-bottom fall-off
-/// for depth. The restraint is the point: an Analogue-minimal surface where the
-/// (muted) ember accent is the single deliberate colour, not competing with a
+/// for depth. The restraint is the point: an Analogue-minimal surface that stays
+/// pure black-and-white, with no coloured accent competing with a
 /// tinted background. Fills its frame; clipped to the notch silhouette by the
 /// caller, exactly like the glass and light surfaces.
 private struct NoirPanelSurface: View {
