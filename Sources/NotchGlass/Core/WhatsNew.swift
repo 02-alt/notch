@@ -34,6 +34,37 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.08.1",
+            summary: "Three new tabs and a smarter closed notch.",
+            changes: [
+                ReleaseChange(
+                    symbol: "gauge.high",
+                    title: "System tab",
+                    detail: "A live pulse of your Mac — CPU load, memory pressure and network throughput, each a hero readout over a sparkline of the last minute. Every sample is read locally; nothing leaves the machine."
+                ),
+                ReleaseChange(
+                    symbol: "hourglass",
+                    title: "Countdown tab",
+                    detail: "Pin the dates you're counting toward — a launch, a trip, a birthday — and watch the time left tick down live. The nearest one leads; the rest stack below."
+                ),
+                ReleaseChange(
+                    symbol: "bolt.fill",
+                    title: "Shortcuts tab",
+                    detail: "A grid of one-tap launchers you define: run a macOS Shortcut, fire a shell command, open a URL or launch an app — a personal Raycast-style pad, right in the notch."
+                ),
+                ReleaseChange(
+                    symbol: "moon.stars.fill",
+                    title: "Real moon photos",
+                    detail: "The Moon now shows NASA's actual hourly photograph for this very instant — true phase, libration and size — instead of a drawing."
+                ),
+                ReleaseChange(
+                    symbol: "rectangle.on.rectangle",
+                    title: "Smarter closed notch",
+                    detail: "The resting pill can now glance a live System (CPU) gauge, the current Weather or your next Countdown — kept fresh in the background even before you open the tab."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.08",
             summary: "A Liquid Glass notch you can shape into anything.",
             changes: [

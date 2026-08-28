@@ -13,6 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let audioLevels = AudioLevels(bandCount: 7)
     private let fuelEvents = FuelEventMonitor()
     private let batteryMonitor = BatteryMonitor()
+    private let cpuMonitor = CPUMonitor()
+    private let weatherGlance = WeatherGlanceMonitor()
     private var airDropWatcher: AirDropWatcher?
     private var cancellables = Set<AnyCancellable>()
 
@@ -102,6 +104,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .removeDuplicates()
             .sink { [weak self] wantsBattery in
                 if wantsBattery { self?.batteryMonitor.start() } else { self?.batteryMonitor.stop() }
+            }
+            .store(in: &cancellables)
+
+        // The CPU-load gauge polls only while it's the chosen resting stat.
+        settings.$collapsedResting
+            .map { $0 == .system }
+            .removeDuplicates()
+            .sink { [weak self] wantsCPU in
+                if wantsCPU { self?.cpuMonitor.start() } else { self?.cpuMonitor.stop() }
+            }
+            .store(in: &cancellables)
+
+        // The weather glance keeps a background location + slow forecast poll running
+        // only while it's the chosen resting stat.
+        settings.$collapsedResting
+            .map { $0 == .weather }
+            .removeDuplicates()
+            .sink { [weak self] wantsWeather in
+                if wantsWeather { self?.weatherGlance.start() } else { self?.weatherGlance.stop() }
             }
             .store(in: &cancellables)
 
@@ -239,6 +260,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .environmentObject(audioLevels)
                 .environmentObject(fuelEvents)
                 .environmentObject(batteryMonitor)
+                .environmentObject(cpuMonitor)
                 .ignoresSafeArea()
         )
 

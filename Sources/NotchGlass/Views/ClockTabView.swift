@@ -48,6 +48,7 @@ struct ClockTabView: View {
             Group {
                 switch mode {
                 case .clock:    clockPane
+                case .precise:  precisePane
                 case .timer:    timerPane
                 case .pomodoro: pomodoroPane
                 }
@@ -261,6 +262,51 @@ struct ClockTabView: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .help("Add a city")
+    }
+
+    // MARK: - Precise mode
+
+    /// A single, focused clock face for when you need the exact time: a big analog
+    /// dial with a smoothly sweeping second hand over a hero HH:MM:SS readout that
+    /// ticks in hundredths, plus the date, city and UTC offset. Driven by
+    /// `TimelineView(.animation)` so the sweep and the sub-second digits stay fluid.
+    private var precisePane: some View {
+        TimelineView(.animation) { context in
+            let p = Self.preciseParts(context.date, tz: .current)
+            VStack(spacing: Spacing.md) {
+                Spacer(minLength: 0)
+                ClockFace(hour: p.hourAngle, minute: p.minuteAngle, second: p.secondAngle,
+                          accent: settings.accent, size: 108)
+                VStack(spacing: Spacing.xs) {
+                    HStack(alignment: .lastTextBaseline, spacing: 2) {
+                        Text(p.hms)
+                            .font(.system(size: 46, weight: .semibold).monospacedDigit())
+                        Text(p.hundredths)
+                            .font(.system(size: 22, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(settings.accent)
+                            .frame(width: 34, alignment: .leading)
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    Text(Self.dateString(context.date, tz: .current))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.secondaryText)
+                    HStack(spacing: Spacing.s) {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(settings.accent)
+                        Text(Self.cityName(for: .current))
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(Self.utcLabel(for: .current, now: context.date))
+                            .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(Theme.tertiaryText)
+                    }
+                    .padding(.top, Spacing.hair)
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity)
+        }
     }
 
     // MARK: - Timer mode
@@ -805,6 +851,34 @@ extension ClockTabView {
                      : String(format: "%02d:%02d", m, sec)
     }
 
+    /// Everything the Precise face needs from one instant: a 24h (or 12h, per the
+    /// user's locale) HH:MM:SS string, the hundredths of a second as a two-digit
+    /// string, and continuous hand angles so the second hand sweeps rather than steps.
+    static func preciseParts(_ date: Date, tz: TimeZone)
+        -> (hms: String, hundredths: String, hourAngle: Double, minuteAngle: Double, secondAngle: Double) {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = tz
+        let c = cal.dateComponents([.hour, .minute, .second, .nanosecond], from: date)
+        let h = c.hour ?? 0, m = c.minute ?? 0, s = c.second ?? 0
+        let frac = Double(c.nanosecond ?? 0) / 1_000_000_000
+        let hms = String(format: "%02d:%02d:%02d", h, m, s)
+        let hundredths = String(format: ".%02d", Int(frac * 100))
+        let contSecond = Double(s) + frac
+        let minute = Double(m) + contSecond / 60
+        let hour = Double(h).truncatingRemainder(dividingBy: 12) + minute / 60
+        return (hms, hundredths, hour / 12 * 360, minute / 60 * 360, contSecond / 60 * 360)
+    }
+
+    /// The zone's UTC offset, e.g. "UTC+1", "UTC−5", "UTC" — shown beside the city on
+    /// the Precise face so the exact time is unambiguous.
+    static func utcLabel(for tz: TimeZone, now: Date) -> String {
+        let secs = tz.secondsFromGMT(for: now)
+        if secs == 0 { return "UTC" }
+        let sign = secs > 0 ? "+" : "−"
+        let h = abs(secs) / 3600, m = (abs(secs) % 3600) / 60
+        return m == 0 ? "UTC\(sign)\(h)" : String(format: "UTC%@%d:%02d", sign, h, m)
+    }
+
     /// Analog hand angles (degrees clockwise from 12) for `date` read in `tz`.
     static func handAngles(_ date: Date, tz: TimeZone) -> (hour: Double, minute: Double, second: Double) {
         var cal = Calendar(identifier: .gregorian)
@@ -940,11 +1014,12 @@ private struct GraduatedTicks: View {
 
 /// The three faces of the Clock tab.
 enum ClockMode: String, CaseIterable, Identifiable {
-    case clock, timer, pomodoro
+    case clock, precise, timer, pomodoro
     var id: String { rawValue }
     var title: String {
         switch self {
         case .clock:    return "Clock"
+        case .precise:  return "Precise"
         case .timer:    return "Timer"
         case .pomodoro: return "Focus"
         }
@@ -952,6 +1027,7 @@ enum ClockMode: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .clock:    return "globe.americas.fill"
+        case .precise:  return "scope"
         case .timer:    return "timer"
         case .pomodoro: return "brain.head.profile"
         }

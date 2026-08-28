@@ -13,6 +13,10 @@ struct CollapsedMediaView: View {
     @EnvironmentObject private var vm: NotchViewModel
     @EnvironmentObject private var fuel: FuelEventMonitor
     @EnvironmentObject private var battery: BatteryMonitor
+    @EnvironmentObject private var cpu: CPUMonitor
+    /// The shared weather store, observed so the pill's temperature updates as the
+    /// background glance refreshes it (see `WeatherGlanceMonitor`).
+    @ObservedObject private var weather = WeatherManager.shared
 
     /// A running kitchen timer takes over the peek so you can watch the countdown
     /// without opening the panel.
@@ -46,10 +50,15 @@ struct CollapsedMediaView: View {
     /// only reads once its background poll lands).
     private var restingHasData: Bool {
         switch settings.collapsedResting {
-        case .none:    return false
-        case .clock:   return true
-        case .fuel:    return fuel.sessionUsed != nil
-        case .battery: return battery.charge != nil
+        case .none:      return false
+        case .clock:     return true
+        case .fuel:      return fuel.sessionUsed != nil
+        case .battery:   return battery.charge != nil
+        case .date:      return true
+        case .storage:   return true
+        case .countdown: return Self.soonestCountdown() != nil
+        case .weather:   return weather.current != nil
+        case .system:    return cpu.load != nil
         }
     }
 
@@ -70,6 +79,10 @@ struct CollapsedMediaView: View {
     /// media peek's album art. Battery swaps to a bolt while charging.
     private var restingSymbol: String {
         if settings.collapsedResting == .battery, battery.charge?.charging == true { return "bolt.fill" }
+        // Weather's left glyph is the live condition (sun/cloud/rain…), not a fixed icon.
+        if settings.collapsedResting == .weather, let c = weather.current {
+            return WeatherCode.symbol(c.code, isDay: c.isDay)
+        }
         return settings.collapsedResting.symbol
     }
 
@@ -304,9 +317,90 @@ struct CollapsedMediaView: View {
                     .lineLimit(1)
                     .fixedSize()
             }
+        case .date:
+            TimelineView(.periodic(from: .now, by: 60)) { ctx in
+                Text(ctx.date, format: .dateTime.weekday(.abbreviated).day())
+                    .font(.system(size: art * 0.46, weight: .bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+        case .countdown:
+            TimelineView(.periodic(from: .now, by: 60)) { _ in
+                if let next = Self.soonestCountdown() {
+                    Text(next.short)
+                        .font(.system(size: art * 0.52, weight: .bold).monospacedDigit())
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+            }
+        case .storage:
+            if let disk = Self.storageFree() {
+                MiniGauge(fraction: disk.freeFraction, label: "\(disk.freePercent)",
+                          color: storageHealth(disk.freeFraction), size: art)
+            }
+        case .weather:
+            if let c = weather.current {
+                Text("\(c.temp)°")
+                    .font(.system(size: art * 0.55, weight: .bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+        case .system:
+            if let load = cpu.load {
+                MiniGauge(fraction: load, label: "\(Int((load * 100).rounded()))",
+                          color: cpuHealth(load), size: art)
+            }
         case .none:
             EmptyView()
         }
+    }
+
+    /// Green under light load, amber when busy, red when pegged — matching the
+    /// battery/fuel/storage gauge language (here more load is "worse", so the bands
+    /// run the other way).
+    private func cpuHealth(_ load: Double) -> Color {
+        if load > 0.85 { return Color(hex: "FF453A") ?? .red }
+        if load > 0.60 { return Color(hex: "FFD60A") ?? .yellow }
+        return Color(hex: "30D158") ?? .green
+    }
+
+    /// Green while there's plenty of room, amber getting tight, red nearly full —
+    /// the same three-band language the battery/fuel gauges use.
+    private func storageHealth(_ free: Double) -> Color {
+        if free < 0.10 { return Color(hex: "FF453A") ?? .red }
+        if free < 0.20 { return Color(hex: "FFD60A") ?? .yellow }
+        return Color(hex: "30D158") ?? .green
+    }
+
+    /// The nearest upcoming Countdown-tab date, read straight from that tab's
+    /// persisted store — so the idle glance mirrors the Countdown tab with no extra
+    /// shared reader. `short` is the compact time left ("12d" / "5h" / "20m").
+    static func soonestCountdown() -> (short: String, title: String)? {
+        guard let json = UserDefaults.standard.string(forKey: "countdown.events"),
+              let data = json.data(using: .utf8),
+              let events = try? JSONDecoder().decode([CountdownEvent].self, from: data) else { return nil }
+        let now = Date()
+        guard let next = events.filter({ $0.date > now }).min(by: { $0.date < $1.date }) else { return nil }
+        let secs = Int(next.date.timeIntervalSince(now))
+        let days = secs / 86_400, hours = (secs % 86_400) / 3600, mins = (secs % 3600) / 60
+        let short = days >= 1 ? "\(days)d" : (hours >= 1 ? "\(hours)h" : "\(mins)m")
+        return (short, next.title)
+    }
+
+    /// Free space on the boot volume as a fraction and whole-percent — a cheap
+    /// one-off `URLResourceValues` read (no polling); the glance's TimelineView
+    /// refreshes it.
+    static func storageFree() -> (freeFraction: Double, freePercent: Int)? {
+        let url = URL(fileURLWithPath: NSHomeDirectory())
+        guard let vals = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey,
+                                                           .volumeTotalCapacityKey]),
+              let free = vals.volumeAvailableCapacityForImportantUsage,
+              let total = vals.volumeTotalCapacity, total > 0 else { return nil }
+        let fraction = min(1, max(0, Double(free) / Double(total)))
+        return (fraction, Int((fraction * 100).rounded()))
     }
 
     /// The rotating right-edge readout for the resting fuel peek — the notch's take on

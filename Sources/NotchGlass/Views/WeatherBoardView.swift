@@ -357,14 +357,17 @@ private struct WeatherTileCard: View {
             .id(tier)
             .transition(.opacity)
             .animation(.easeInOut(duration: 0.18), value: tier)
+            // Weather-coloured Liquid Glass, keyed only on (code, isDay) so it isn't
+            // recomposed as the tile reflows during a resize drag.
             .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Self.gradient(code: snapshot?.code ?? 3, isDay: snapshot?.isDay ?? true))
+                WeatherTileBackground(code: snapshot?.code ?? 3, isDay: snapshot?.isDay ?? true)
             }
+            // Selection accent; the resting glass rim comes from the background itself.
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(isDraft ? accent : Color.white.opacity(0.08),
-                                  lineWidth: isDraft ? 2 : 1)
+                if isDraft {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(accent, lineWidth: 2)
+                }
             }
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
@@ -668,26 +671,20 @@ private struct WeatherTileCard: View {
         }
     }
 
-    /// A subtle dark gradient tinted by conditions, so tiles read at a glance
-    /// (clear-blue vs. stormy-slate vs. night-indigo) while staying legible.
-    static func gradient(code: Int, isDay: Bool) -> LinearGradient {
-        let colors: [Color]
-        switch code {
-        case 0, 1:
-            colors = isDay ? [Color(red: 0.12, green: 0.28, blue: 0.48), Color(red: 0.06, green: 0.12, blue: 0.24)]
-                           : [Color(red: 0.09, green: 0.10, blue: 0.22), Color(red: 0.03, green: 0.03, blue: 0.08)]
-        case 2, 3, 45, 48:
-            colors = [Color(red: 0.16, green: 0.19, blue: 0.24), Color(red: 0.07, green: 0.08, blue: 0.11)]
-        case 51...67, 80...82:
-            colors = [Color(red: 0.12, green: 0.18, blue: 0.26), Color(red: 0.05, green: 0.07, blue: 0.11)]
-        case 71...77, 85, 86:
-            colors = [Color(red: 0.20, green: 0.23, blue: 0.30), Color(red: 0.08, green: 0.09, blue: 0.13)]
-        case 95...99:
-            colors = [Color(red: 0.17, green: 0.13, blue: 0.24), Color(red: 0.06, green: 0.05, blue: 0.10)]
-        default:
-            colors = [Color(red: 0.13, green: 0.15, blue: 0.19), Color(red: 0.05, green: 0.06, blue: 0.09)]
-        }
-        return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+}
+
+/// The weather tile's Liquid Glass backdrop: the condition gradient carried in a
+/// size-independent scrim under a `.regular` glass surface. Split into its own view,
+/// keyed only on `(code, isDay)`, so SwiftUI keeps it stable — and skips the glass
+/// recomposition — while the tile springs through size tiers during a resize drag.
+private struct WeatherTileBackground: View {
+    let code: Int
+    let isDay: Bool
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        Color.clear
+            .gradientGlass(in: shape, fill: WeatherCode.gradient(code, isDay: isDay))
     }
 }
 

@@ -474,7 +474,7 @@ struct MoonCard: View {
 
     var body: some View {
         HStack(spacing: Spacing.base) {
-            MoonDisc(fraction: model.moonFraction, waxing: model.moonWaxing, size: 56)
+            MoonPhotoDisc(date: model.now, fraction: model.moonFraction, waxing: model.moonWaxing, size: 56)
             VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(model.moonPhaseName)
                     .font(.system(size: 13, weight: .bold))

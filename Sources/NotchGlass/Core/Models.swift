@@ -17,6 +17,9 @@ enum NotchTab: String, CaseIterable, Identifiable {
     case fuel
     case record
     case deck
+    case now
+    case countdown
+    case shortcuts
 
     var id: String { rawValue }
 
@@ -41,6 +44,9 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .fuel:    return "fuelpump.fill"
         case .record:  return "record.circle"
         case .deck:    return "square.grid.3x3.fill"
+        case .now:     return "gauge.high"
+        case .countdown: return "hourglass"
+        case .shortcuts: return "bolt.fill"
         }
     }
 
@@ -60,6 +66,9 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .fuel:    return "Fuel"
         case .record:  return "Record"
         case .deck:    return "Deck"
+        case .now:     return "System"
+        case .countdown: return "Countdown"
+        case .shortcuts: return "Shortcuts"
         }
     }
 
@@ -81,6 +90,9 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .fuel:     return "AI usage & limits"
         case .record:   return "Screen recording"
         case .deck:     return "Shortcut key deck"
+        case .now:      return "Live machine vitals"
+        case .countdown: return "Days until a date"
+        case .shortcuts: return "One-tap launchers"
         }
     }
 
@@ -103,6 +115,9 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .fuel:     return ["tokens", "usage", "claude", "api", "limits", "quota"]
         case .record:   return ["screen", "capture", "video", "record", "clip"]
         case .deck:     return ["shortcuts", "keys", "macros", "actions", "grid"]
+        case .now:      return ["cpu", "ram", "memory", "network", "monitor", "activity", "stats", "pulse", "system"]
+        case .countdown: return ["countdown", "date", "event", "until", "days", "deadline", "trip"]
+        case .shortcuts: return ["launch", "run", "script", "command", "automation", "shortcut", "app"]
         }
     }
 
@@ -121,8 +136,8 @@ enum NotchTab: String, CaseIterable, Identifiable {
     var category: Category {
         switch self {
         case .media, .ambient:            return .media
-        case .drop, .website, .note, .scratch, .fuel, .record, .deck: return .tools
-        case .mood, .map, .weather, .clock, .calendar: return .glance
+        case .drop, .website, .note, .scratch, .fuel, .record, .deck, .shortcuts: return .tools
+        case .mood, .map, .weather, .clock, .calendar, .now, .countdown: return .glance
         }
     }
 
@@ -157,30 +172,47 @@ enum NotchTab: String, CaseIterable, Identifiable {
 /// `.fuel` / `.battery` need a live source, so choosing them starts the relevant
 /// background reader (see `FuelEventMonitor` / `BatteryMonitor`).
 enum CollapsedResting: String, CaseIterable, Identifiable {
-    case none, fuel, clock, battery
+    case none, fuel, clock, battery, date, countdown, storage, weather, system
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .none:    return "Nothing"
-        case .fuel:    return "Fuel"
-        case .clock:   return "Clock"
-        case .battery: return "Battery"
+        case .none:      return "Nothing"
+        case .fuel:      return "Fuel"
+        case .clock:     return "Clock"
+        case .battery:   return "Battery"
+        case .date:      return "Date"
+        case .countdown: return "Countdown"
+        case .storage:   return "Storage"
+        case .weather:   return "Weather"
+        case .system:    return "System"
         }
     }
 
     var symbol: String {
         switch self {
-        case .none:    return "circle.dashed"
-        case .fuel:    return "fuelpump.fill"
-        case .clock:   return "clock.fill"
-        case .battery: return "battery.100"
+        case .none:      return "circle.dashed"
+        case .fuel:      return "fuelpump.fill"
+        case .clock:     return "clock.fill"
+        case .battery:   return "battery.100"
+        case .date:      return "calendar"
+        case .countdown: return "hourglass"
+        case .storage:   return "internaldrive.fill"
+        case .weather:   return "cloud.sun.fill"
+        case .system:    return "gauge.high"
         }
     }
 
     /// Whether this option depends on a background reader that has to be spun up.
-    var needsPolling: Bool { self == .fuel || self == .battery }
+    /// Date/Countdown/Storage are cheap local reads (a `TimelineView` tick or a one-off
+    /// disk query); Fuel/Battery/Weather/System each drive a gentle background poll.
+    var needsPolling: Bool {
+        switch self {
+        case .fuel, .battery, .weather, .system: return true
+        default: return false
+        }
+    }
 }
 
 /// How often the Fuel tab re-reads live usage while it's on screen. Faster cadences

@@ -74,6 +74,9 @@ struct PanelView: View {
                         case .fuel:    FuelTabView()
                         case .record:  RecordTabView()
                         case .deck:    DeckTabView()
+                        case .now:     NowTabView()
+                        case .countdown: CountdownTabView()
+                        case .shortcuts: ShortcutsTabView()
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

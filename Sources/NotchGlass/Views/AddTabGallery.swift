@@ -154,7 +154,7 @@ private struct AddTabGalleryCard: View {
     /// Fixed tile height, so the grid's visible height is exact math (no guessing
     /// around variable-height tiles).
     private let tileHeight: CGFloat = 56
-    private let rowSpacing: CGFloat = 8
+    private let rowSpacing: CGFloat = Spacing.sm
     /// Rows shown before the grid starts scrolling.
     private let maxVisibleRows = 4
 
@@ -174,7 +174,7 @@ private struct AddTabGalleryCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.base) {
+        VStack(alignment: .leading, spacing: Spacing.lg) {
             searchField
             if presentCategories.count > 1 {
                 categoryChips

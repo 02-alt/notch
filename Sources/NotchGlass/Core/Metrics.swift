@@ -109,10 +109,25 @@ enum Metrics {
     /// Taller body for the Deck tab. The always-visible "Deck" header sits above
     /// the content, and the "New Key" editor overlay (segmented action picker +
     /// label/symbol/payload fields + Add Key button) fills only the area below it,
-    /// so the body must hold header (~44pt) + editor (~250pt) or the Add Key button
-    /// clips off the bottom. The grid sits in a fill-to-height ScrollView, so the
-    /// extra room just shows more keys when not editing. Kept below `moodExpandedHeight`.
-    static let deckHeight: CGFloat = 348
+    /// so the body must hold header (~44pt) + editor (~290pt) or the Add Key button
+    /// clips off the bottom. The visual editor (action chips + adaptive destination
+    /// control + name/preview row + save) is taller than the old field stack, so the
+    /// body grew to suit. The grid sits in a fill-to-height ScrollView, so the extra
+    /// room just shows more keys when not editing. Kept below `moodExpandedHeight`.
+    static let deckHeight: CGFloat = 384
+
+    /// Taller body for the System (Now) tab: three stacked vitals rows (CPU, memory,
+    /// network), each a hero readout plus a sparkline of recent history, want more
+    /// room than the standard `openHeight`. Kept below `moodExpandedHeight`.
+    static let nowHeight: CGFloat = 400
+
+    /// Taller body for the Countdown tab: a hero "days remaining" block over a
+    /// scrolling list of the other pinned dates. Kept below `moodExpandedHeight`.
+    static let countdownHeight: CGFloat = 400
+
+    /// Taller body for the Shortcuts tab: a grid of launch tiles plus the inline
+    /// "new shortcut" editor. Kept below `moodExpandedHeight`.
+    static let shortcutsHeight: CGFloat = 388
 
     /// The "bigger notch" the Mood board grows into when expanded (not a real
     /// fullscreen — just a much larger floating canvas).
@@ -161,6 +176,9 @@ enum Metrics {
         if tab == .scratch { return scratchHeight }
         if tab == .deck { return deckHeight }
         if tab == .record { return recordHeight }
+        if tab == .now { return nowHeight }
+        if tab == .countdown { return countdownHeight }
+        if tab == .shortcuts { return shortcutsHeight }
         return openHeight
     }
 

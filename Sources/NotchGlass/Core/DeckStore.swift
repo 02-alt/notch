@@ -90,6 +90,55 @@ struct DeckButton: Identifiable, Codable, Equatable {
     }
 }
 
+// MARK: - Natural icon resolution
+
+extension DeckButton {
+    /// The legacy seed glyph, kept so keys saved before the visual editor still
+    /// read as "no explicit icon chosen".
+    static let seedSymbol = "square.grid.2x2.fill"
+
+    /// Whether the user has deliberately picked a glyph (rather than leaving the
+    /// auto default). When they haven't, the key prefers a *natural* icon — the
+    /// real app icon or the site favicon — so the deck reads like a real launcher.
+    var hasCustomSymbol: Bool {
+        let s = symbol.trimmingCharacters(in: .whitespaces)
+        guard !s.isEmpty, s != Self.seedSymbol else { return false }
+        return !Action.allCases.contains { $0.defaultSymbol == s }
+    }
+
+    /// The on-disk item an `.app` / `.file` key points at, if the payload resolves
+    /// to something that actually exists — so its Finder icon can be shown.
+    var resolvedFileURL: URL? {
+        guard action == .app || action == .file, !payload.isEmpty else { return nil }
+        let expanded = (payload as NSString).expandingTildeInPath
+        guard expanded.hasPrefix("/"), FileManager.default.fileExists(atPath: expanded) else { return nil }
+        return URL(fileURLWithPath: expanded)
+    }
+
+    /// The site's own favicon for a `.url` key (fetched from the host's `/favicon.ico`,
+    /// so no third-party favicon service ever sees the user's saved hostnames).
+    var faviconURL: URL? {
+        guard action == .url else { return nil }
+        var s = payload.trimmingCharacters(in: .whitespaces)
+        guard !s.isEmpty else { return nil }
+        if !s.hasPrefix("http://") && !s.hasPrefix("https://") { s = "https://" + s }
+        guard let host = URL(string: s)?.host else { return nil }
+        return URL(string: "https://\(host)/favicon.ico")
+    }
+
+    /// A human display name for the current payload, for the editor's chosen-item
+    /// chip (app/file name, URL host, or the raw payload).
+    var payloadDisplayName: String {
+        if let file = resolvedFileURL { return file.deletingPathExtension().lastPathComponent }
+        if action == .url {
+            var s = payload.trimmingCharacters(in: .whitespaces)
+            if !s.hasPrefix("http") { s = "https://" + s }
+            return URL(string: s)?.host?.replacingOccurrences(of: "www.", with: "") ?? payload
+        }
+        return payload
+    }
+}
+
 /// Persists the Deck's keys and exposes them to the tab. A standalone singleton
 /// (like `CountdownTimer.shared`) so the feature stays self-contained rather than
 /// threading through `SettingsStore`/`NotchViewModel`.

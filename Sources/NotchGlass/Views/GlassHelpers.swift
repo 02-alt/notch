@@ -40,6 +40,29 @@ extension View {
             .clipShape(shape)
     }
 
+    /// A Liquid Glass card whose colour comes from a **gradient scrim**, for surfaces
+    /// that want to read as a colour (a weather tile's condition) rather than smoked
+    /// black. Same `.regular` frosting + light-catching rim as `blackGlass`, and for
+    /// the same reason it takes the colour from a scrim over the glass — a glass
+    /// *tint* is silently dropped by the system above ~65pt (see `blackGlass`), which
+    /// these tiles exceed. The scrim is opaque so white content stays legible over any
+    /// desktop behind the panel; the glass shows as the frosted, refractive rim.
+    func gradientGlass<S: Shape>(in shape: S, fill: LinearGradient, stroke: Double = 0.08) -> some View {
+        self
+            .background { shape.fill(fill) }   // colour — size-independent, unlike a glass tint
+            .glassEffect(.regular, in: shape)  // frosting + refraction behind the scrim
+            .overlay {
+                shape.stroke(
+                    LinearGradient(
+                        colors: [Color.white.opacity(stroke), Color.white.opacity(stroke * 0.35)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
+            }
+    }
+
     /// A Liquid Glass content pane — a real translucent `.glassEffect` surface
     /// (not the flat `innerCard` fill) with a hairline edge, used to group
     /// settings rows into distinct frosted cards on the dark panel.

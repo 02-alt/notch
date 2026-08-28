@@ -547,4 +547,31 @@ enum WeatherCode {
         default:           return "—"
         }
     }
+
+    /// A weather-coloured gradient so a tile reads its condition at a glance —
+    /// sky-blue clear day, indigo clear night, slate overcast, deep-blue rain, pale
+    /// snow, violet thunder — while staying dark enough (top-left) for white text.
+    /// Grouped by the same WMO bands as `symbol`/`description`.
+    static func gradient(_ code: Int, isDay: Bool) -> LinearGradient {
+        let colors: [Color]
+        switch code {
+        case 0, 1:              // Clear / mainly clear
+            colors = isDay ? [Color(red: 0.20, green: 0.45, blue: 0.74), Color(red: 0.08, green: 0.19, blue: 0.40)]
+                           : [Color(red: 0.13, green: 0.15, blue: 0.36), Color(red: 0.04, green: 0.04, blue: 0.13)]
+        case 2:                 // Partly cloudy
+            colors = isDay ? [Color(red: 0.25, green: 0.37, blue: 0.55), Color(red: 0.10, green: 0.16, blue: 0.28)]
+                           : [Color(red: 0.15, green: 0.17, blue: 0.32), Color(red: 0.05, green: 0.06, blue: 0.13)]
+        case 3, 45, 48:         // Overcast / fog
+            colors = [Color(red: 0.30, green: 0.33, blue: 0.39), Color(red: 0.12, green: 0.13, blue: 0.17)]
+        case 51...67, 80...82:  // Drizzle / rain / showers
+            colors = [Color(red: 0.16, green: 0.28, blue: 0.44), Color(red: 0.05, green: 0.10, blue: 0.19)]
+        case 71...77, 85, 86:   // Snow
+            colors = [Color(red: 0.36, green: 0.42, blue: 0.54), Color(red: 0.15, green: 0.18, blue: 0.27)]
+        case 95...99:           // Thunderstorm
+            colors = [Color(red: 0.29, green: 0.19, blue: 0.44), Color(red: 0.10, green: 0.06, blue: 0.18)]
+        default:
+            colors = [Color(red: 0.15, green: 0.17, blue: 0.22), Color(red: 0.05, green: 0.06, blue: 0.09)]
+        }
+        return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
 }

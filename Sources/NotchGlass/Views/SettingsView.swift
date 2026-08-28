@@ -43,8 +43,8 @@ struct NotchSettingsView: View {
         HStack(alignment: .top, spacing: Spacing.lg) {
             switch vm.settingsCategory {
             case .general:
-                column { generalGroup; fuelGroup }
-                column { aboutGroup }
+                column { generalGroup }
+                column { aboutGroup; fuelGroup }
             case .appearance:
                 column { themeGroup }
                 column { styleGroup }
@@ -73,13 +73,15 @@ struct NotchSettingsView: View {
 
     private var generalGroup: some View {
         settingsGroup("General") {
-            SettingRow("Launch at login") {
-                NotchToggle(isOn: $settings.launchAtLogin, accent: settings.accent)
+            SettingRow("Launch at login", icon: "power") {
+                NotchToggle(isOn: $settings.launchAtLogin, accent: settings.accent,
+                            label: "Launch at login")
             }
-            SettingRow("Default tab") {
-                defaultTabPicker
+            SettingColumn("Default tab", icon: "square.grid.2x2",
+                          caption: "The tab shown when the panel opens.") {
+                defaultTabChips
             }
-            sliderRow("Close delay", value: $settings.closeDelay,
+            sliderRow("Close delay", icon: "timer", value: $settings.closeDelay,
                       range: 0...1, label: String(format: "%.2fs", settings.closeDelay),
                       caption: "Wait before the panel collapses on exit.")
         }
@@ -89,8 +91,17 @@ struct NotchSettingsView: View {
     /// limit, so it's opt-in and defaults to the safe Normal.
     private var fuelGroup: some View {
         settingsGroup("Fuel") {
-            SettingRow("Update rate", caption: fuelRateCaption) {
-                fuelRatePicker
+            SettingColumn("Update rate", icon: "arrow.triangle.2.circlepath",
+                          caption: fuelRateCaption) {
+                segmentedControl(
+                    selection: settings.fuelRefreshRate,
+                    options: [
+                        SegOption(value: .live,    title: "Live",    symbol: FuelRefreshRate.live.symbol),
+                        SegOption(value: .normal,  title: "Normal",  symbol: FuelRefreshRate.normal.symbol),
+                        SegOption(value: .relaxed, title: "Relaxed", symbol: FuelRefreshRate.relaxed.symbol),
+                    ],
+                    accessibilityPrefix: "Update rate"
+                ) { settings.fuelRefreshRate = $0 }
             }
         }
     }
@@ -103,48 +114,64 @@ struct NotchSettingsView: View {
         }
     }
 
-    /// White-text menu (the system `.menu` picker renders black-on-dark here) for the
-    /// Fuel refresh cadence.
-    private var fuelRatePicker: some View {
-        Menu {
-            ForEach(FuelRefreshRate.allCases) { option in
-                Button {
-                    settings.fuelRefreshRate = option
-                } label: {
-                    Label(option.title, systemImage: option.symbol)
+    // MARK: - Segmented control (replaces the old dark-menu dropdowns)
+
+    /// One option in a ``segmentedControl``: a value, a short label and a glyph.
+    private struct SegOption<T: Hashable>: Identifiable {
+        let value: T
+        let title: String
+        let symbol: String
+        var id: String { title }
+    }
+
+    /// A full-width segmented picker of mutually-exclusive options (icon + label per
+    /// segment, accent fill on the selection) — used for the small, fixed choice
+    /// sets that used to be black-on-dark pop-up menus (Fuel rate, idle glance). More
+    /// visual and one tap instead of two, per the segmented-control guidance for
+    /// 2–5 equally-weighted options.
+    private func segmentedControl<T: Hashable>(
+        selection: T,
+        options: [SegOption<T>],
+        accessibilityPrefix: String,
+        onPick: @escaping (T) -> Void
+    ) -> some View {
+        HStack(spacing: Spacing.xs) {
+            ForEach(options) { option in
+                let on = selection == option.value
+                Button { onPick(option.value) } label: {
+                    HStack(spacing: Spacing.s) {
+                        Image(systemName: option.symbol)
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(option.title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .foregroundStyle(on ? settings.accent.readableForeground : Theme.secondaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.s)
+                    .contentShape(Capsule())
                 }
+                .buttonStyle(.plain)
+                .background { if on { Capsule(style: .continuous).fill(settings.accent) } }
+                .notchHover(scale: 1.03)
+                .accessibilityLabel("\(accessibilityPrefix): \(option.title)")
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
-        } label: {
-            HStack(spacing: Spacing.s) {
-                Image(systemName: settings.fuelRefreshRate.symbol)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Theme.secondaryText)
-                Text(settings.fuelRefreshRate.title)
-                    .foregroundStyle(Theme.primaryText)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Theme.secondaryText)
-            }
-            .font(.system(size: 12, weight: .medium))
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.s)
-            .contentShape(Capsule())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .blackGlass(in: Capsule(), interactive: true)
-        .linkCursor()
+        .padding(Spacing.xs)
+        .background(Capsule(style: .continuous).fill(Theme.line(0.07)))
+        .overlay(Capsule(style: .continuous).strokeBorder(Theme.cardStroke, lineWidth: 1))
     }
 
     private var aboutGroup: some View {
         settingsGroup("About") {
-            SettingRow("Version") {
+            SettingRow("Version", icon: "info.circle") {
                 Text(Updater.currentVersion)
                     .font(.system(size: 12, weight: .medium).monospacedDigit())
                     .foregroundStyle(Theme.secondaryText)
             }
-            SettingRow("Release notes") {
+            SettingRow("Release notes", icon: "sparkles") {
                 Button("What's New") {
                     withAnimation(Metrics.openSpring) { vm.showSettings = false }
                     vm.presentWhatsNew()
@@ -175,10 +202,10 @@ struct NotchSettingsView: View {
 
     private var styleGroup: some View {
         settingsGroup("Style") {
-            SettingColumn("Accent color") {
+            SettingColumn("Accent color", icon: "paintpalette") {
                 accentSwatches
             }
-            sliderRow("Panel width", value: $settings.panelWidth,
+            sliderRow("Panel width", icon: "arrow.left.and.right", value: $settings.panelWidth,
                       range: 460...900, step: 10, label: "\(Int(settings.panelWidth))")
         }
     }
@@ -187,11 +214,11 @@ struct NotchSettingsView: View {
     /// two media groups (segmented control + app chips), so it leads.
     private var sourcesGroup: some View {
         settingsGroup("Sources") {
-            SettingColumn("Preferred source",
+            SettingColumn("Preferred source", icon: "star",
                           caption: "Which player wins when both are playing.") {
                 segmented
             }
-            SettingColumn("Read from",
+            SettingColumn("Read from", icon: "app.badge",
                           caption: "Only enabled apps are accessed — each asks for permission once.") {
                 sourcesPicker
             }
@@ -201,9 +228,10 @@ struct NotchSettingsView: View {
     /// Media tab, right column — how the current track is shown.
     private var displayGroup: some View {
         settingsGroup("Display") {
-            SettingRow("Show artwork",
+            SettingRow("Show artwork", icon: "photo",
                        caption: "Show album art on the Media tab and the closed notch.") {
-                NotchToggle(isOn: $settings.showArtwork, accent: settings.accent)
+                NotchToggle(isOn: $settings.showArtwork, accent: settings.accent,
+                            label: "Show artwork")
             }
         }
     }
@@ -212,8 +240,8 @@ struct NotchSettingsView: View {
     /// is happening. (Formerly buried in the Media tab as "Collapsed notch".)
     private var idleGroup: some View {
         settingsGroup("When idle") {
-            SettingRow("Show", caption: restingCaption) {
-                restingPicker
+            SettingColumn("Show", icon: "moon.stars", caption: restingCaption) {
+                restingGrid
             }
         }
     }
@@ -222,16 +250,19 @@ struct NotchSettingsView: View {
     /// notch: the now-playing peek and transient Fuel notices.
     private var peeksGroup: some View {
         settingsGroup("Live peeks") {
-            SettingRow("Now playing") {
-                NotchToggle(isOn: $settings.collapsedShowsMedia, accent: settings.accent)
+            SettingRow("Now playing", icon: "music.note") {
+                NotchToggle(isOn: $settings.collapsedShowsMedia, accent: settings.accent,
+                            label: "Now playing peek")
             }
-            SettingRow("Fuel events",
+            SettingRow("Fuel events", icon: "fuelpump.fill",
                        caption: "The notch briefly opens with a notice when your tokens refill or run low, you hit the weekly limit, or you start using credits. Checks your usage periodically in the background.") {
-                NotchToggle(isOn: $settings.collapsedShowsFuelEvents, accent: settings.accent)
+                NotchToggle(isOn: $settings.collapsedShowsFuelEvents, accent: settings.accent,
+                            label: "Fuel events")
             }
-            SettingRow("Dynamic Island",
+            SettingRow("Dynamic Island", icon: "capsule.fill",
                        caption: "The closed notch expands on its own when something happens — a new track, a finished timer, an incoming AirDrop — showing it for a moment, then settling back. iPhone-style.") {
-                NotchToggle(isOn: $settings.dynamicIsland, accent: settings.accent)
+                NotchToggle(isOn: $settings.dynamicIsland, accent: settings.accent,
+                            label: "Dynamic Island")
             }
         }
     }
@@ -240,45 +271,54 @@ struct NotchSettingsView: View {
     /// that the live stats (Fuel / Battery) read a source in the background.
     private var restingCaption: String {
         switch settings.collapsedResting {
-        case .none:    return "What the closed notch shows when nothing’s playing."
-        case .clock:   return "Shows the time on the closed notch when nothing’s playing."
-        case .fuel:    return "A fuel gauge on the closed notch that cycles the refill countdown, % left, credits and the weekly reset — like a menu-bar meter. Checks your usage periodically in the background."
-        case .battery: return "Shows this Mac’s battery on the closed notch when nothing’s playing."
+        case .none:      return "What the closed notch shows when nothing’s playing."
+        case .clock:     return "Shows the time on the closed notch when nothing’s playing."
+        case .fuel:      return "A fuel gauge on the closed notch that cycles the refill countdown, % left, credits and the weekly reset — like a menu-bar meter. Checks your usage periodically in the background."
+        case .battery:   return "Shows this Mac’s battery on the closed notch when nothing’s playing."
+        case .date:      return "Shows today’s weekday and date on the closed notch when nothing’s playing."
+        case .countdown: return "Shows the time left to your nearest Countdown tab date on the closed notch."
+        case .storage:   return "Shows this Mac’s free disk space on the closed notch when nothing’s playing."
+        case .weather:   return "Shows your local temperature and conditions on the closed notch. Uses your location and periodically fetches from a keyless weather service in the background."
+        case .system:    return "Shows a live CPU-load gauge on the closed notch when nothing’s playing."
         }
     }
 
-    /// White-text menu (the system `.menu` picker renders black-on-dark here) for the
-    /// resting glance shown on the closed notch.
-    private var restingPicker: some View {
-        Menu {
+    /// The idle-glance picker. A wrapping 3-column grid of icon+label chips rather
+    /// than a segmented control — there are now seven options, past the ~5–6 a
+    /// segmented control reads well at, so a radio-style chip group is the fit.
+    private var restingGrid: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.s), count: 3),
+                  spacing: Spacing.s) {
             ForEach(CollapsedResting.allCases) { option in
-                Button {
-                    settings.collapsedResting = option
-                } label: {
-                    Label(option.title, systemImage: option.symbol)
+                let on = settings.collapsedResting == option
+                Button { settings.collapsedResting = option } label: {
+                    HStack(spacing: Spacing.s) {
+                        Image(systemName: option.symbol)
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(option.title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .foregroundStyle(on ? settings.accent.readableForeground : Theme.secondaryText)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, Spacing.s)
+                    .background {
+                        Capsule(style: .continuous)
+                            .fill(on ? settings.accent : Theme.line(0.08))
+                    }
+                    .overlay {
+                        Capsule(style: .continuous)
+                            .strokeBorder(Theme.cardStroke, lineWidth: on ? 0 : 1)
+                    }
+                    .contentShape(Capsule())
                 }
+                .buttonStyle(.plain)
+                .notchHover(scale: 1.03)
+                .accessibilityLabel("When idle, show: \(option.title)")
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
-        } label: {
-            HStack(spacing: Spacing.s) {
-                Image(systemName: settings.collapsedResting.symbol)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Theme.secondaryText)
-                Text(settings.collapsedResting.title)
-                    .foregroundStyle(Theme.primaryText)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Theme.secondaryText)
-            }
-            .font(.system(size: 12, weight: .medium))
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.s)
-            .contentShape(Capsule())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .blackGlass(in: Capsule(), interactive: true)
-        .linkCursor()
     }
 
     // MARK: - Category selector
@@ -382,12 +422,12 @@ struct NotchSettingsView: View {
     /// A label + trailing control on one baseline — the standard settings row —
     /// wrapped in its own softly-filled card. An optional caption drops onto a
     /// second line inside the same card.
-    private func SettingRow<Control: View>(_ title: String, caption captionText: String? = nil,
+    private func SettingRow<Control: View>(_ title: String, icon: String? = nil,
+                                           caption captionText: String? = nil,
                                            @ViewBuilder control: () -> Control) -> some View {
         VStack(alignment: .leading, spacing: Spacing.s) {
             HStack(spacing: Spacing.md) {
-                Text(title)
-                    .font(.system(size: 12, weight: .medium))
+                rowLabel(title, icon: icon)
                 Spacer(minLength: 8)
                 control()
             }
@@ -400,11 +440,11 @@ struct NotchSettingsView: View {
     /// A label (with optional caption) above a full-width control — used where the
     /// control is too wide to sit trailing (swatches, the segmented picker). Also
     /// carded, so it sits on the same grid as the single-line rows.
-    private func SettingColumn<Control: View>(_ title: String, caption captionText: String? = nil,
+    private func SettingColumn<Control: View>(_ title: String, icon: String? = nil,
+                                              caption captionText: String? = nil,
                                               @ViewBuilder control: () -> Control) -> some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
+            rowLabel(title, icon: icon)
             control()
             if let captionText { caption(captionText) }
         }
@@ -412,14 +452,31 @@ struct NotchSettingsView: View {
         .settingsCard()
     }
 
-    private func sliderRow(_ title: String, value: Binding<Double>,
+    /// A setting's title, optionally led by a small accent glyph so the pane can be
+    /// scanned by icon. The glyph is decorative (the title carries the name), so it's
+    /// hidden from VoiceOver to avoid a doubled reading.
+    private func rowLabel(_ title: String, icon: String?) -> some View {
+        HStack(spacing: Spacing.s) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(settings.accent)
+                    .frame(width: 18)
+                    .accessibilityHidden(true)
+            }
+            Text(title)
+                .font(.system(size: 12, weight: .medium))
+        }
+    }
+
+    private func sliderRow(_ title: String, icon: String? = nil, value: Binding<Double>,
                            range: ClosedRange<Double>, step: Double = 0.01,
                            label: String, caption captionText: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: Spacing.sm) {
             HStack(spacing: Spacing.md) {
-                Text(title)
-                    .font(.system(size: 12, weight: .medium))
-                NotchSlider(value: value, range: range, step: step, accent: settings.accent)
+                rowLabel(title, icon: icon)
+                NotchSlider(value: value, range: range, step: step, accent: settings.accent,
+                            accessibilityLabel: title, accessibilityValue: label)
                 Text(label)
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
                     .foregroundStyle(Theme.secondaryText)
@@ -481,32 +538,43 @@ struct NotchSettingsView: View {
 
     // MARK: - Default-tab picker
 
-    /// White-text menu (the system `.menu` picker renders black text on this dark
-    /// card — invisible). Only offers tabs actually in the bar, so the default
-    /// can't point at a tab the user has removed.
-    private var defaultTabPicker: some View {
-        Menu {
-            ForEach(settings.enabledTabs) { tab in
-                Button(tab.title) { settings.defaultTab = tab }
-            }
-        } label: {
+    /// A scrolling row of chips — one per tab actually in the bar — each showing the
+    /// tab's own icon and name, so the default is picked by sight from the real tabs
+    /// (and can't point at a tab the user has removed). Replaces the old black-on-dark
+    /// pop-up menu; a chip group suits the variable, sometimes >5 option count.
+    private var defaultTabChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: Spacing.s) {
-                Text(settings.defaultTab.title)
-                    .foregroundStyle(Theme.primaryText)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(Theme.secondaryText)
+                ForEach(settings.enabledTabs) { tab in
+                    let on = settings.defaultTab == tab
+                    Button { settings.defaultTab = tab } label: {
+                        HStack(spacing: Spacing.s) {
+                            Image(systemName: tab.symbol)
+                                .font(.system(size: 10, weight: .semibold))
+                            Text(tab.title)
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundStyle(on ? settings.accent.readableForeground : Theme.secondaryText)
+                        .padding(.horizontal, Spacing.md)
+                        .padding(.vertical, Spacing.s)
+                        .background {
+                            Capsule(style: .continuous)
+                                .fill(on ? settings.accent : Theme.line(0.08))
+                        }
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .strokeBorder(Theme.cardStroke, lineWidth: on ? 0 : 1)
+                        }
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .notchHover(scale: 1.04)
+                    .accessibilityLabel("Default tab: \(tab.title)")
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
             }
-            .font(.system(size: 12, weight: .medium))
-            .padding(.horizontal, Spacing.md)
-            .padding(.vertical, Spacing.s)
-            .contentShape(Capsule())
+            .padding(.horizontal, Spacing.hair)
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .blackGlass(in: Capsule(), interactive: true)
-        .linkCursor()
     }
 
     // MARK: - Visual theme picker
@@ -705,6 +773,9 @@ private extension View {
 private struct NotchToggle: View {
     @Binding var isOn: Bool
     let accent: Color
+    /// The setting name, so VoiceOver announces "<label>, on/off" — the custom
+    /// Button carries no text of its own.
+    var label: String = ""
 
     private let w: CGFloat = 42
     private let h: CGFloat = 24
@@ -730,6 +801,9 @@ private struct NotchToggle: View {
         .buttonStyle(.plain)
         .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isOn)
         .linkCursor()
+        .accessibilityLabel(label)
+        .accessibilityValue(isOn ? "On" : "Off")
+        .accessibilityAddTraits(.isToggle)
     }
 }
 
@@ -740,6 +814,8 @@ private struct NotchSlider: View {
     let range: ClosedRange<Double>
     var step: Double = 0
     let accent: Color
+    var accessibilityLabel: String = ""
+    var accessibilityValue: String = ""
 
     private let knob: CGFloat = 14
     /// Grows the knob a touch while the pointer is over the track.
@@ -781,6 +857,17 @@ private struct NotchSlider: View {
             )
         }
         .frame(height: 18)
+        .accessibilityElement()
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(accessibilityValue)
+        .accessibilityAdjustableAction { direction in
+            let increment = step > 0 ? step : (range.upperBound - range.lowerBound) / 20
+            switch direction {
+            case .increment: value = min(range.upperBound, value + increment)
+            case .decrement: value = max(range.lowerBound, value - increment)
+            @unknown default: break
+            }
+        }
     }
 }
 

@@ -148,9 +148,7 @@ private struct DeckKey: View {
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: Spacing.s) {
-                Image(systemName: key.symbol.isEmpty ? key.action.defaultSymbol : key.symbol)
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(Theme.primaryText)
+                DeckIcon(key: key, size: 30)
                 Text(key.label.isEmpty ? key.action.title : key.label)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.primaryText.opacity(0.85))
@@ -183,7 +181,47 @@ private struct DeckKey: View {
     }
 }
 
-/// The inline editor overlay for creating/reconfiguring a key.
+/// A key's icon as it appears everywhere (grid tile + editor preview): the real
+/// app icon for an app key, the site favicon for a URL key, the Finder icon for a
+/// file key — or an SF Symbol when the user has picked a custom glyph or there's no
+/// natural icon (Shortcut / Command). One source of truth so the preview always
+/// matches the tile.
+struct DeckIcon: View {
+    let key: DeckButton
+    var size: CGFloat = 30
+
+    var body: some View {
+        if !key.hasCustomSymbol, let fileURL = key.resolvedFileURL {
+            Image(nsImage: NSWorkspace.shared.icon(forFile: fileURL.path))
+                .resizable().interpolation(.high)
+                .frame(width: size, height: size)
+        } else if !key.hasCustomSymbol, let favicon = key.faviconURL {
+            AsyncImage(url: favicon) { phase in
+                if let image = phase.image {
+                    image.resizable().interpolation(.high)
+                        .frame(width: size, height: size)
+                } else {
+                    symbol("globe")
+                }
+            }
+        } else {
+            symbol(key.symbol.isEmpty ? key.action.defaultSymbol : key.symbol)
+        }
+    }
+
+    private func symbol(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(.system(size: size * 0.66, weight: .medium))
+            .foregroundStyle(Theme.primaryText)
+            .frame(width: size, height: size)
+    }
+}
+
+/// The inline editor overlay for creating/reconfiguring a key. Reworked to be
+/// visual-first: you pick an action from icon chips, choose the target (an app,
+/// file, URL, shortcut or command) through the control that fits it, and the icon
+/// is derived automatically — no raw SF Symbol names or file paths to type. A live
+/// preview shows exactly how the key will look before you save.
 private struct DeckKeyEditor: View {
     @State var draft: DeckButton
     let isNew: Bool
@@ -191,70 +229,22 @@ private struct DeckKeyEditor: View {
     let onSave: (DeckButton) -> Void
     let onCancel: () -> Void
 
+    /// Installed macOS Shortcuts, loaded lazily when the Shortcut action is picked,
+    /// so the user can choose from a menu instead of remembering an exact name.
+    @State private var installedShortcuts: [String] = []
+    @State private var pickingSymbol = false
+    @FocusState private var labelFocused: Bool
+
+    private var canSave: Bool { !draft.payload.trimmingCharacters(in: .whitespaces).isEmpty }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
-            HStack {
-                Text(isNew ? "New Key" : "Edit Key")
-                    .font(.system(size: 13, weight: .bold))
-                Spacer()
-                Button(action: onCancel) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .frame(width: 26, height: 26)
-                        .blackGlass(in: Circle(), interactive: true)
-                }
-                .buttonStyle(.plain)
-            }
-
-            Picker("", selection: $draft.action) {
-                ForEach(DeckButton.Action.allCases) { a in
-                    Text(a.title).tag(a)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .onChange(of: draft.action) { _, a in
-                if draft.symbol.isEmpty || DeckButton.Action.allCases.contains(where: { $0.defaultSymbol == draft.symbol }) {
-                    draft.symbol = a.defaultSymbol
-                }
-            }
-
-            field("Label", text: $draft.label, prompt: "My Key")
-
-            HStack(spacing: Spacing.sm) {
-                Image(systemName: draft.symbol.isEmpty ? draft.action.defaultSymbol : draft.symbol)
-                    .font(.system(size: 15))
-                    .frame(width: 30, height: 30)
-                    .blackGlass(in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                editField(text: $draft.symbol, prompt: "SF Symbol name")
-            }
-
-            HStack(spacing: Spacing.sm) {
-                editField(text: $draft.payload, prompt: draft.action.payloadPrompt)
-                if draft.action == .app || draft.action == .file {
-                    Button("Choose…") { choose() }
-                        .buttonStyle(.plain)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(accent)
-                }
-            }
-
+        VStack(alignment: .leading, spacing: Spacing.base) {
+            header
+            actionChips
+            destinationSection
+            appearanceRow
             Spacer(minLength: 0)
-
-            Button {
-                onSave(draft)
-            } label: {
-                Text(isNew ? "Add Key" : "Save")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Theme.primaryText)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 36)
-                    .blackGlass(in: RoundedRectangle(cornerRadius: 10, style: .continuous), interactive: true)
-            }
-            .buttonStyle(.plain)
-            .notchHover()
-            .disabled(draft.payload.trimmingCharacters(in: .whitespaces).isEmpty)
-            .opacity(draft.payload.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
+            saveButton
         }
         .foregroundStyle(Theme.primaryText)
         .padding(Spacing.lg)
@@ -266,22 +256,264 @@ private struct DeckKeyEditor: View {
         }
     }
 
-    private func field(_ title: String, text: Binding<String>, prompt: String) -> some View {
-        editField(text: text, prompt: prompt)
+    // MARK: Header
+
+    private var header: some View {
+        HStack {
+            Text(isNew ? "New Key" : "Edit Key")
+                .font(.system(size: 13, weight: .bold))
+            Spacer()
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .frame(width: 26, height: 26)
+                    .blackGlass(in: Circle(), interactive: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close editor")
+        }
     }
 
-    private func editField(text: Binding<String>, prompt: String) -> some View {
-        TextField("", text: text, prompt: Text(prompt).foregroundStyle(Theme.primaryText.opacity(0.4)))
-            .textFieldStyle(.plain)
-            .font(.system(size: 12))
-            .foregroundStyle(Theme.primaryText)
-            .padding(.horizontal, Spacing.md)
-            .frame(height: 30)
-            .frame(maxWidth: .infinity)
-            .background {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Theme.primaryText.opacity(0.08))
+    // MARK: Action chips
+
+    private var actionChips: some View {
+        HStack(spacing: Spacing.sm) {
+            ForEach(DeckButton.Action.allCases) { action in
+                actionChip(action)
             }
+        }
+    }
+
+    private func actionChip(_ action: DeckButton.Action) -> some View {
+        let on = draft.action == action
+        return Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+                draft.action = action
+                // Prefer a natural icon for the new action: clear an auto glyph so
+                // the app icon / favicon shows; keep a genuinely custom one.
+                if !draft.hasCustomSymbol { draft.symbol = "" }
+            }
+            if action == .shortcut { loadShortcuts() }
+        } label: {
+            VStack(spacing: Spacing.xs) {
+                Image(systemName: action.defaultSymbol)
+                    .font(.system(size: 16, weight: .semibold))
+                Text(Self.shortLabel(action))
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(on ? accent.readableForeground : Theme.secondaryText)
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
+            .background {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(on ? accent : Theme.line(0.08))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .notchHover(scale: 1.04)
+        .accessibilityLabel(action.title)
+        .accessibilityAddTraits(on ? [.isSelected] : [])
+    }
+
+    // MARK: Destination (adapts per action)
+
+    @ViewBuilder
+    private var destinationSection: some View {
+        VStack(alignment: .leading, spacing: Spacing.s) {
+            Text(Self.destinationCaption(draft.action))
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Theme.tertiaryText)
+                .kerning(0.6)
+                .accessibilityHidden(true)
+
+            switch draft.action {
+            case .app, .file:
+                chooseRow
+            case .url:
+                textRow(prompt: draft.action.payloadPrompt, mono: false,
+                        label: "Website address", icon: "globe")
+            case .shortcut:
+                shortcutRow
+            case .shell:
+                textRow(prompt: draft.action.payloadPrompt, mono: true,
+                        label: "Command to run", icon: "terminal.fill")
+            }
+        }
+    }
+
+    /// App / File: a big "Choose…" control that shows the picked item's real icon
+    /// and name instead of a raw path.
+    private var chooseRow: some View {
+        Button { choose() } label: {
+            HStack(spacing: Spacing.sm) {
+                if draft.resolvedFileURL != nil {
+                    DeckIcon(key: draft, size: 26)
+                    Text(draft.payloadDisplayName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.primaryText)
+                        .lineLimit(1)
+                } else {
+                    Image(systemName: draft.action == .app ? "app.dashed" : "doc.badge.plus")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Theme.secondaryText)
+                    Text(draft.action == .app ? "Choose an app…" : "Choose a file…")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                Spacer(minLength: 0)
+                Text(draft.resolvedFileURL == nil ? "Browse" : "Change")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(accent)
+            }
+            .padding(.horizontal, Spacing.md)
+            .frame(height: 40)
+            .frame(maxWidth: .infinity)
+            .innerCard(cornerRadius: 10)
+        }
+        .buttonStyle(.plain)
+        .notchHover(scale: 1.01)
+        .accessibilityLabel(draft.action == .app ? "Choose an app" : "Choose a file")
+    }
+
+    /// Shortcut: type the name, with a menu of installed shortcuts to fill it.
+    private var shortcutRow: some View {
+        HStack(spacing: Spacing.sm) {
+            payloadField(prompt: draft.action.payloadPrompt, mono: false, icon: "bolt.fill")
+                .accessibilityLabel("Shortcut name")
+            if !installedShortcuts.isEmpty {
+                Menu {
+                    ForEach(installedShortcuts, id: \.self) { name in
+                        Button(name) {
+                            draft.payload = name
+                            if draft.label.isEmpty { draft.label = name }
+                        }
+                    }
+                } label: {
+                    Image(systemName: "list.bullet")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(accent)
+                        .frame(width: 34, height: 40)
+                        .innerCard(cornerRadius: 10)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .accessibilityLabel("Pick from installed shortcuts")
+            }
+        }
+    }
+
+    private func textRow(prompt: String, mono: Bool, label: String, icon: String) -> some View {
+        payloadField(prompt: prompt, mono: mono, icon: icon)
+            .accessibilityLabel(label)
+    }
+
+    /// A labelled payload text field with a leading action glyph.
+    private func payloadField(prompt: String, mono: Bool, icon: String) -> some View {
+        HStack(spacing: Spacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.secondaryText)
+                .frame(width: 16)
+            TextField("", text: $draft.payload,
+                      prompt: Text(prompt).foregroundStyle(Theme.primaryText.opacity(0.4)))
+                .textFieldStyle(.plain)
+                .font(mono ? .system(size: 12).monospaced() : .system(size: 13))
+                .foregroundStyle(Theme.primaryText)
+                .tint(accent)
+        }
+        .padding(.horizontal, Spacing.md)
+        .frame(height: 40)
+        .frame(maxWidth: .infinity)
+        .innerCard(cornerRadius: 10)
+    }
+
+    // MARK: Appearance (name + optional icon override)
+
+    private var appearanceRow: some View {
+        HStack(spacing: Spacing.sm) {
+            // Live preview of the exact key icon.
+            DeckIcon(key: draft, size: 26)
+                .frame(width: 40, height: 40)
+                .innerCard(cornerRadius: 10)
+                .accessibilityHidden(true)
+
+            HStack(spacing: Spacing.sm) {
+                TextField("", text: $draft.label,
+                          prompt: Text("Name").foregroundStyle(Theme.primaryText.opacity(0.4)))
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Theme.primaryText)
+                    .tint(accent)
+                    .focused($labelFocused)
+                    .accessibilityLabel("Key name")
+            }
+            .padding(.horizontal, Spacing.md)
+            .frame(height: 40)
+            .frame(maxWidth: .infinity)
+            .innerCard(cornerRadius: 10)
+
+            // Icon override only where there's no natural icon to fall back on.
+            if draft.action == .shortcut || draft.action == .shell {
+                symbolPickerButton
+            }
+        }
+    }
+
+    private var symbolPickerButton: some View {
+        Button { pickingSymbol = true } label: {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: draft.symbol.isEmpty ? draft.action.defaultSymbol : draft.symbol)
+                    .font(.system(size: 13, weight: .medium))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(Theme.tertiaryText)
+            }
+            .foregroundStyle(Theme.primaryText)
+            .frame(width: 52, height: 40)
+            .innerCard(cornerRadius: 10)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Choose icon")
+        .popover(isPresented: $pickingSymbol, arrowEdge: .bottom) {
+            SymbolGrid(selected: draft.symbol.isEmpty ? draft.action.defaultSymbol : draft.symbol,
+                       accent: accent) { picked in
+                draft.symbol = picked
+                pickingSymbol = false
+            }
+            .padding(Spacing.base)
+            .frame(width: 240)
+        }
+    }
+
+    // MARK: Save
+
+    private var saveButton: some View {
+        Button { commit() } label: {
+            Text(isNew ? "Add Key" : "Save")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(Theme.primaryText)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .blackGlass(in: RoundedRectangle(cornerRadius: 10, style: .continuous), interactive: true)
+        }
+        .buttonStyle(.plain)
+        .notchHover()
+        .disabled(!canSave)
+        .opacity(canSave ? 1 : 0.5)
+    }
+
+    // MARK: Actions
+
+    private func commit() {
+        guard canSave else { return }
+        if draft.label.trimmingCharacters(in: .whitespaces).isEmpty {
+            draft.label = draft.payloadDisplayName
+        }
+        onSave(draft)
     }
 
     private func choose() {
@@ -292,11 +524,101 @@ private struct DeckKeyEditor: View {
         if draft.action == .app {
             panel.directoryURL = URL(fileURLWithPath: "/Applications")
             panel.allowedContentTypes = [.application]
+            panel.prompt = "Choose App"
+        } else {
+            panel.prompt = "Choose File"
         }
         guard panel.runModal() == .OK, let url = panel.url else { return }
         draft.payload = url.path
+        // A chosen app/file has a real icon, so drop any leftover custom glyph.
+        draft.symbol = ""
         if draft.label.isEmpty {
             draft.label = url.deletingPathExtension().lastPathComponent
+        }
+    }
+
+    /// Load the user's installed Shortcuts via the `shortcuts list` CLI, off the
+    /// main thread. Best-effort: on any failure the menu just doesn't appear and
+    /// the text field still works.
+    private func loadShortcuts() {
+        guard installedShortcuts.isEmpty else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: "/usr/bin/shortcuts")
+            task.arguments = ["list"]
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            guard (try? task.run()) != nil else { return }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            task.waitUntilExit()
+            let names = String(decoding: data, as: UTF8.self)
+                .split(separator: "\n")
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+            DispatchQueue.main.async { installedShortcuts = Array(names.prefix(200)) }
+        }
+    }
+
+    // MARK: Labels
+
+    /// Short chip labels — the full names ("Open App", "Run Command") are the
+    /// accessibility labels; the chips show the compact form.
+    static func shortLabel(_ action: DeckButton.Action) -> String {
+        switch action {
+        case .app:      return "App"
+        case .url:      return "URL"
+        case .file:     return "File"
+        case .shortcut: return "Shortcut"
+        case .shell:    return "Command"
+        }
+    }
+
+    static func destinationCaption(_ action: DeckButton.Action) -> String {
+        switch action {
+        case .app:      return "APPLICATION"
+        case .file:     return "FILE OR FOLDER"
+        case .url:      return "WEBSITE"
+        case .shortcut: return "SHORTCUT"
+        case .shell:    return "COMMAND"
+        }
+    }
+}
+
+/// A compact grid of curated SF Symbols for the icon override — pick visually
+/// rather than typing a symbol name.
+private struct SymbolGrid: View {
+    let selected: String
+    let accent: Color
+    let onPick: (String) -> Void
+
+    private static let symbols = [
+        "bolt.fill", "terminal.fill", "star.fill", "heart.fill", "flag.fill",
+        "bell.fill", "folder.fill", "doc.fill", "link", "globe",
+        "gearshape.fill", "hammer.fill", "wrench.and.screwdriver.fill", "paintbrush.fill", "wand.and.stars",
+        "play.fill", "music.note", "camera.fill", "video.fill", "mic.fill",
+        "envelope.fill", "message.fill", "phone.fill", "calendar", "clock.fill",
+        "moon.fill", "sun.max.fill", "cloud.fill", "leaf.fill", "flame.fill",
+        "cart.fill", "creditcard.fill", "lock.fill", "key.fill", "power",
+    ]
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: Spacing.s), count: 6)
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: Spacing.s) {
+            ForEach(Self.symbols, id: \.self) { name in
+                Button { onPick(name) } label: {
+                    Image(systemName: name)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(name == selected ? accent.readableForeground : Theme.primaryText)
+                        .frame(width: 30, height: 30)
+                        .background {
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(name == selected ? accent : Theme.line(0.08))
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(name)
+            }
         }
     }
 }
