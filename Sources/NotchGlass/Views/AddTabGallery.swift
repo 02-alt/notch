@@ -116,7 +116,7 @@ struct AddTabGalleryHost: View {
             bodySize = CGSize(width: Metrics.moodExpandedWidth, height: Metrics.moodExpandedHeight)
         } else {
             bodySize = CGSize(width: CGFloat(settings.panelWidth),
-                              height: Metrics.bodyHeight(for: vm.selectedTab, showingSettings: vm.showSettings, settingsCategory: vm.settingsCategory))
+                              height: Metrics.bodyHeight(for: vm.selectedTab, showingSettings: vm.showSettings, settingsCategory: vm.settingsCategory, mediaLyrics: settings.mediaLyrics))
         }
         return CGRect(x: (size.width - bodySize.width) / 2, y: 0,
                       width: bodySize.width, height: bodySize.height)

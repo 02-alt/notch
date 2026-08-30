@@ -23,12 +23,13 @@ struct RootView: View {
     /// Whether the collapsed pill should widen into a "lyrics ticker" — the pin is on
     /// and the current track actually has synced lyrics to show.
     private var lyricTickerActive: Bool {
-        lyrics.tickerActive(pinned: settings.pinLyrics, hasTrack: np.hasTrack)
+        lyrics.tickerActive(pinned: settings.pinLyrics, hasTrack: np.hasTrack, dynamicIsland: settings.dynamicIsland)
     }
 
-    /// The line currently shown on the ticker (title as a fallback during an intro /
-    /// instrumental gap). Nil when the ticker isn't active — also the animation key, so
-    /// the pill morphs to its new width each time the line changes.
+    /// The line currently shown on the ticker (title as a fallback only before the
+    /// first line, i.e. the intro — mid-song gaps linger on the last sung line). Nil
+    /// when the ticker isn't active — also the animation key, so the pill morphs to its
+    /// new width each time the line changes.
     private var lyricTickerLine: String? {
         lyricTickerActive ? (lyrics.currentLine(at: np.position) ?? np.title) : nil
     }

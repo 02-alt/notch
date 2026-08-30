@@ -43,10 +43,11 @@ struct CollapsedMediaView: View {
     /// Whether the pinned-lyrics ticker should take the pill: the pin is on and the
     /// track has synced lyrics. Independent of `collapsedShowsMedia` — pinning is an
     /// explicit request to keep the words in the notch.
-    private var lyricPinned: Bool { lyrics.tickerActive(pinned: settings.pinLyrics, hasTrack: np.hasTrack) }
+    private var lyricPinned: Bool { lyrics.tickerActive(pinned: settings.pinLyrics, hasTrack: np.hasTrack, dynamicIsland: settings.dynamicIsland) }
 
-    /// The current line under the playhead; falls back to the track title during an
-    /// intro or an instrumental gap so the ticker never blanks mid-song.
+    /// The current line under the playhead; falls back to the track title only before
+    /// the first line begins (the intro). Mid-song gaps don't blank — `currentLine`
+    /// deliberately lingers on the last sung line through instrumental breaks.
     private var lyricText: String { lyrics.currentLine(at: np.position) ?? np.title }
 
     /// Whether the peek should be visible at all — a transient event, an AirDrop
