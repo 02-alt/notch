@@ -34,7 +34,7 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
-            version: "1.26.08.3",
+            version: "1.26.08.4",
             summary: "Sing along, and a safety net when things go wrong.",
             changes: [
                 ReleaseChange(
