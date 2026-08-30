@@ -1,36 +1,6 @@
 import SwiftUI
 
 extension View {
-    /// The expanded panel body: a dark rounded card that hangs from the top of the
-    /// screen (square top corners, rounded bottom) — matching the reference UI.
-    /// Liquid Glass is reserved for the buttons, not this surface.
-    func panelSurface() -> some View {
-        // Square top corners so the panel sits flush against the top edge of the
-        // screen (welded to the notch); only the bottom corners are rounded.
-        let shape = UnevenRoundedRectangle(
-            topLeadingRadius: 0,
-            bottomLeadingRadius: Metrics.panelCornerRadius,
-            bottomTrailingRadius: Metrics.panelCornerRadius,
-            topTrailingRadius: 0,
-            style: .continuous
-        )
-        return self
-            .background {
-                shape.fill(
-                    LinearGradient(
-                        colors: [Color(white: 0.13), Color(white: 0.09)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-            }
-            .overlay {
-                shape.strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-            }
-            .clipShape(shape)
-            .shadow(color: .black.opacity(0.5), radius: 18, y: 8)
-    }
-
     /// A softer inner "card" used for content blocks inside the panel.
     func innerCard(cornerRadius: CGFloat = Metrics.cardCornerRadius) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

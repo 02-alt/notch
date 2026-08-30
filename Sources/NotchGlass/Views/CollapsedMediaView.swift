@@ -11,6 +11,7 @@ struct CollapsedMediaView: View {
     @EnvironmentObject private var np: NowPlayingManager
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var vm: NotchViewModel
+    @EnvironmentObject private var lyrics: LyricsService
     @EnvironmentObject private var fuel: FuelEventMonitor
     @EnvironmentObject private var battery: BatteryMonitor
     @EnvironmentObject private var cpu: CPUMonitor
@@ -39,11 +40,20 @@ struct CollapsedMediaView: View {
     /// Whether the now-playing media peek may show (gated by the setting).
     private var mediaVisible: Bool { settings.collapsedShowsMedia && np.hasTrack }
 
+    /// Whether the pinned-lyrics ticker should take the pill: the pin is on and the
+    /// track has synced lyrics. Independent of `collapsedShowsMedia` — pinning is an
+    /// explicit request to keep the words in the notch.
+    private var lyricPinned: Bool { lyrics.tickerActive(pinned: settings.pinLyrics, hasTrack: np.hasTrack) }
+
+    /// The current line under the playhead; falls back to the track title during an
+    /// intro or an instrumental gap so the ticker never blanks mid-song.
+    private var lyricText: String { lyrics.currentLine(at: np.position) ?? np.title }
+
     /// Whether the peek should be visible at all — a transient event, an AirDrop
     /// transfer and a running timer all take priority over (and can appear without)
     /// media, and a chosen resting stat fills the otherwise-idle pill.
     private var visible: Bool {
-        recorder.isRecording || vm.islandActivity != nil || vm.collapsedEvent != nil || vm.transferActive || timer.isActive || mediaVisible || restingReady || settings.dynamicIsland
+        recorder.isRecording || vm.islandActivity != nil || vm.collapsedEvent != nil || vm.transferActive || timer.isActive || mediaVisible || lyricPinned || restingReady || settings.dynamicIsland
     }
 
     /// Whether the chosen resting stat has a value to show yet (a live-source stat
@@ -128,6 +138,19 @@ struct CollapsedMediaView: View {
                 AirDropSpinner(diameter: art)
             } else if timer.isActive {
                 timerPeek
+            } else if lyricPinned {
+                // Pinned lyrics ticker: the album art on the left, the live line filling
+                // the rest of the pill — which is sized to fit the line (see
+                // RootView.collapsedBodySize / lyricTickerWidth).
+                artwork
+                Text(lyricText)
+                    .font(.system(size: art * 0.42, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(maxWidth: .infinity)
+                    .padding(.leading, hInset)
+                    .animation(.easeInOut(duration: 0.25), value: lyricText)
             } else if mediaVisible {
                 artwork
                 Spacer(minLength: hInset)

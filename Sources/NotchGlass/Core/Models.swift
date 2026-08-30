@@ -101,7 +101,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
     /// "ai" finds Chat + Fuel, and so on.
     var keywords: [String] {
         switch self {
-        case .media:    return ["music", "spotify", "player", "song", "play", "podcast"]
+        case .media:    return ["music", "spotify", "player", "song", "play", "podcast", "lyrics", "karaoke"]
         case .mood:     return ["board", "stickers", "pin", "links", "corkboard"]
         case .drop:     return ["files", "airdrop", "shelf", "transfer", "share"]
         case .website:  return ["bookmarks", "web", "sites", "url", "links"]
@@ -204,15 +204,6 @@ enum CollapsedResting: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Whether this option depends on a background reader that has to be spun up.
-    /// Date/Countdown/Storage are cheap local reads (a `TimelineView` tick or a one-off
-    /// disk query); Fuel/Battery/Weather/System each drive a gentle background poll.
-    var needsPolling: Bool {
-        switch self {
-        case .fuel, .battery, .weather, .system: return true
-        default: return false
-        }
-    }
 }
 
 /// How often the Fuel tab re-reads live usage while it's on screen. Faster cadences
@@ -425,10 +416,6 @@ struct MoodItem: Identifiable, Codable, Equatable {
         return nil
     }
 
-    var fileIcon: NSImage? {
-        guard kind == .file else { return nil }
-        return NSWorkspace.shared.icon(forFile: content)
-    }
 }
 
 /// A mood note's paper color. `.accent` follows the app accent; the rest are fixed.

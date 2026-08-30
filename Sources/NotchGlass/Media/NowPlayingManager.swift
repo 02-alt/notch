@@ -64,7 +64,6 @@ final class NowPlayingManager: ObservableObject {
     @Published var title: String = "Nothing Playing"
     @Published var artist: String = ""
     @Published var album: String = ""
-    @Published var lyricLine: String = "No lyrics found"
     @Published var isPlaying: Bool = false
     @Published var duration: Double = 0        // seconds
     @Published var artwork: NSImage?

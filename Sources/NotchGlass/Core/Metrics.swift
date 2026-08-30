@@ -7,9 +7,6 @@ enum Metrics {
     static let fallbackNotchWidth: CGFloat = 200
     static let fallbackNotchHeight: CGFloat = 32
 
-    /// Extra hover margin around the collapsed pill.
-    static let collapsedHoverPadding: CGFloat = 14
-
     /// Extra width added to each side of the collapsed pill on displays *without*
     /// a physical notch, where the pill floats below the top edge. On a real notch
     /// the pill matches the notch bounds exactly (see `AppDelegate.notchSize`), so
@@ -43,6 +40,10 @@ enum Metrics {
     // Tall enough that the immersive Media player (108pt art + transport + source
     // chips) fits without its bottom row being clipped by the panel edge.
     static let openHeight: CGFloat = 244
+
+    /// The Media tab's height while showing lyrics — taller than `openHeight` so the
+    /// synced lines and the scrubber underneath aren't crammed together.
+    static let mediaLyricsHeight: CGFloat = 360
 
     /// Body height for each Settings category. The settings are split into broad
     /// categories switched by a top pill selector, so the panel only has to be as
@@ -169,9 +170,13 @@ enum Metrics {
     /// content; the Fuel dashboard grows taller; every other tab uses `openHeight`.
     static func bodyHeight(for tab: NotchTab, showingSettings: Bool,
                            showingWhatsNew: Bool = false, whatsNewChanges: Int = 0,
-                           settingsCategory: SettingsCategory) -> CGFloat {
+                           settingsCategory: SettingsCategory,
+                           mediaLyrics: Bool = false) -> CGFloat {
         if showingWhatsNew { return whatsNewHeight(changeCount: whatsNewChanges) }
         if showingSettings { return settingsHeight(for: settingsCategory) }
+        // The Media tab grows when it's showing lyrics, so the scrolling words and the
+        // scrubber below them have room to breathe instead of crowding the player height.
+        if tab == .media && mediaLyrics { return mediaLyricsHeight }
         if tab == .fuel { return fuelHeight }
         if tab == .clock { return clockHeight }
         if tab == .weather { return weatherHeight }

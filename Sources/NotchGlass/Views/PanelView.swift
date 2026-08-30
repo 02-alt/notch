@@ -29,7 +29,7 @@ struct PanelView: View {
     }
 
     private var bodyHeight: CGFloat {
-        isMoodBig ? Metrics.moodExpandedHeight : Metrics.bodyHeight(for: vm.selectedTab, showingSettings: vm.showSettings, showingWhatsNew: vm.showWhatsNew, whatsNewChanges: WhatsNew.visibleChangeCount, settingsCategory: vm.settingsCategory)
+        isMoodBig ? Metrics.moodExpandedHeight : Metrics.bodyHeight(for: vm.selectedTab, showingSettings: vm.showSettings, showingWhatsNew: vm.showWhatsNew, whatsNewChanges: WhatsNew.visibleChangeCount, settingsCategory: vm.settingsCategory, mediaLyrics: settings.mediaLyrics)
     }
 
     var body: some View {

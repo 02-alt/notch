@@ -1087,9 +1087,6 @@ struct TimerPreset: Identifiable {
         return s == 0 ? "\(m) min" : String(format: "%d:%02d", m, s)
     }
 
-    /// The whole-minute count for the dial label.
-    var minutesText: String { "\(Int(seconds) / 60)" }
-
     /// Clock-hand angles that point the preset's dial at its cook time — the minute
     /// hand to the minutes, the hour hand creeping round as the minutes mount — so
     /// each preset's face reads differently at a glance.

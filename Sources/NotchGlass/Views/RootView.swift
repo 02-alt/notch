@@ -17,6 +17,45 @@ struct RootView: View {
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var glassMenu: GlassMenuController
     @EnvironmentObject private var gallery: AddTabGalleryController
+    @EnvironmentObject private var np: NowPlayingManager
+    @EnvironmentObject private var lyrics: LyricsService
+
+    /// Whether the collapsed pill should widen into a "lyrics ticker" — the pin is on
+    /// and the current track actually has synced lyrics to show.
+    private var lyricTickerActive: Bool {
+        lyrics.tickerActive(pinned: settings.pinLyrics, hasTrack: np.hasTrack)
+    }
+
+    /// The line currently shown on the ticker (title as a fallback during an intro /
+    /// instrumental gap). Nil when the ticker isn't active — also the animation key, so
+    /// the pill morphs to its new width each time the line changes.
+    private var lyricTickerLine: String? {
+        lyricTickerActive ? (lyrics.currentLine(at: np.position) ?? np.title) : nil
+    }
+
+    /// The collapsed pill width when showing the pinned lyric line — sized to *fit* the
+    /// current line (so it isn't truncated), then clamped so a very long line can't run
+    /// the pill off-screen. `CollapsedMediaView` fills this width with the line.
+    private var lyricTickerWidth: CGFloat {
+        let base = vm.collapsedSize
+        let vInset = max(4, base.height * 0.15)
+        let art = max(0, base.height - vInset * 2)
+        let hInset = max(12, base.height * 0.42)
+        let fontSize = art * 0.42
+        // Measure the line's *actual* rendered width (proportional fonts vary too much
+        // to estimate by character count) so the pill is sized to fit exactly, then add
+        // the album-art tile + the surrounding insets, with a little slack.
+        let font = NSFont.systemFont(ofSize: fontSize, weight: .semibold)
+        let textWidth = ((lyricTickerLine ?? "") as NSString)
+            .size(withAttributes: [.font: font]).width
+        // Round up + generous slack: SwiftUI's Text renders a hair wider than this
+        // measurement, so a tight fit clips the last word on long lines.
+        let needed = art + hInset * 3 + textWidth.rounded(.up) + 24
+        // Grow as far as the hosting window allows (it's the wide Mood-canvas width),
+        // leaving a small margin so the pill never touches the window edge.
+        let maxWidth = Metrics.windowContentWidth(panelWidth: openWidth) - 24
+        return min(max(base.width, needed), maxWidth)
+    }
 
     /// True while a drag session is hovering the notch body.
     @State private var dragOver = false
@@ -40,7 +79,7 @@ struct RootView: View {
         if isMoodBig {
             return CGSize(width: Metrics.moodExpandedWidth, height: Metrics.moodExpandedHeight)
         }
-        return CGSize(width: openWidth, height: Metrics.bodyHeight(for: vm.selectedTab, showingSettings: vm.showSettings, showingWhatsNew: vm.showWhatsNew, whatsNewChanges: WhatsNew.visibleChangeCount, settingsCategory: vm.settingsCategory))
+        return CGSize(width: openWidth, height: Metrics.bodyHeight(for: vm.selectedTab, showingSettings: vm.showSettings, showingWhatsNew: vm.showWhatsNew, whatsNewChanges: WhatsNew.visibleChangeCount, settingsCategory: vm.settingsCategory, mediaLyrics: settings.mediaLyrics))
     }
 
     /// The collapsed pill's size — the bare notch normally, but while a fuel event is
@@ -62,6 +101,11 @@ struct RootView: View {
         // with room for the time + battery either side of the camera.
         if settings.dynamicIsland {
             return CGSize(width: max(base.width + 150, 300), height: base.height + 6)
+        }
+        // Pinned lyrics: widen into a ticker sized to fit the current line beside the
+        // album art, without touching the bare-notch height.
+        if lyricTickerActive {
+            return CGSize(width: lyricTickerWidth, height: base.height)
         }
         return base
     }
@@ -163,6 +207,25 @@ struct RootView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
+            // Click absorber: the visible notch body always swallows mouse clicks so
+            // one never falls through to the window beneath it. Sits under everything
+            // and matches the body's exact silhouette (and its island offset), so the
+            // transparent window area around the notch still passes clicks through.
+            //
+            // It's a *filled* shape at a hair of opacity, not `Color.clear` +
+            // `contentShape`: on a borderless transparent panel AppKit only refuses to
+            // pass a click through where the hosting view actually draws a pixel, so a
+            // truly clear region still falls through. A ~0.1%-opacity fill is invisible
+            // but paints real (hittable) pixels across the whole silhouette.
+            //
+            // It carries no hover of its own — opening stays gated to the narrow
+            // central trigger (`hoverShape`) so the collapsed pill still only arms
+            // when the pointer is genuinely over the notch core.
+            bodyShape
+                .fill(Color.white.opacity(0.001))
+                .frame(width: bodySize.width, height: bodySize.height)
+                .offset(y: islandTopGap)
+
             // Surface: colors morph continuously as it expands — from the pure
             // notch-black of the collapsed pill to the panel's dark gradient, with
             // a faint accent sheen that blooms mid-motion and settles back to
@@ -266,6 +329,10 @@ struct RootView: View {
         .animation(Metrics.openSpring, value: settings.panelTheme)
         // Toggling Dynamic Island morphs the resting pill wider/narrower — spring it.
         .animation(Metrics.islandExpand, value: settings.dynamicIsland)
+        // Widening into (and out of) the pinned-lyrics ticker morphs like the island —
+        // and re-sizes to each new line as the song plays.
+        .animation(Metrics.islandExpand, value: lyricTickerActive)
+        .animation(Metrics.islandExpand, value: lyricTickerLine)
         .animation(Metrics.openSpring, value: vm.showSettings)
         .animation(Metrics.openSpring, value: vm.showWhatsNew)
         // Each Settings category has its own height — animate the resize on switch.
@@ -383,16 +450,20 @@ private struct GlassPanelSurface: View {
             // shape* so the lensing bends the wallpaper along the rounded bottom edge.
             .glassEffect(.regular, in: shape)
             // Lighten the glass *frost* over the lower panel. `.regular` glass carries
-            // its own grey frost (~10% dim over a bright wallpaper); fading it to about
-            // half toward the bottom halves that to ~5%, so the bottom reads more
-            // transparent — without the full washout the `.clear` variant caused. Full
-            // glass is kept up top where the black cap sits.
+            // its own grey frost (~10% dim over a bright wallpaper); fading it toward the
+            // bottom keeps that region reading as transparent glass — without the full
+            // washout the `.clear` variant caused. Full glass is kept up top where the
+            // black cap sits. But we hold a **gentle frost floor (~0.7) through the clear
+            // bottom** rather than dropping to half: that residual glass is a small,
+            // smooth backdrop blur that softens the busy wallpaper behind the panel's
+            // content, so white text over the transparent region stays legible.
             .mask {
                 LinearGradient(
                     stops: [
-                        .init(color: .white,              location: 0.00),
-                        .init(color: .white,              location: 0.58),
-                        .init(color: .white.opacity(0.5), location: 1.00),
+                        .init(color: .white,               location: 0.00),
+                        .init(color: .white,               location: 0.58),
+                        .init(color: .white.opacity(0.72), location: 0.82),
+                        .init(color: .white.opacity(0.70), location: 1.00),
                     ],
                     startPoint: .top,
                     endPoint: .bottom
@@ -420,43 +491,6 @@ private struct GlassPanelSurface: View {
             }
             // (The faint drifting "Siri rainbow" prism at the top edge was removed on
             // request — no rainbow / chromatic dispersion anywhere on the glass.)
-    }
-}
-
-/// The chromatic-dispersion highlight: a soft, low-opacity spectrum that drifts
-/// sideways on a very slow, gentle oscillation (~1-minute round trip) so it reads
-/// as a living glint on the glass rather than an animation demanding attention.
-private struct PrismStreak: View {
-    // Starts offset a touch to one side; the repeating ease drifts it to the other
-    // and back. Kept small so it always reads centered — just barely alive.
-    @State private var drift: CGFloat = -9
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        LinearGradient(
-            colors: [
-                .clear,
-                Color(red: 1.00, green: 0.30, blue: 0.34),   // red
-                Color(red: 1.00, green: 0.74, blue: 0.24),   // amber
-                Color(red: 0.55, green: 1.00, blue: 0.48),   // green
-                Color(red: 0.32, green: 0.72, blue: 1.00),   // cyan-blue
-                Color(red: 0.70, green: 0.40, blue: 1.00),   // violet
-                .clear,
-            ],
-            startPoint: .leading,
-            endPoint: .trailing
-        )
-        .frame(width: 300, height: 6)
-        .blur(radius: 4)
-        .opacity(0.38)             // faint, but actually visible on the black glass
-        .blendMode(.plusLighter)
-        .offset(x: reduceMotion ? 0 : drift)   // Reduce Motion: hold it centered, no drift
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 30).repeatForever(autoreverses: true)) {
-                drift = 9
-            }
-        }
     }
 }
 

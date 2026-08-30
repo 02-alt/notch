@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settings = SettingsStore.shared
     private let viewModel = NotchViewModel()
     private let nowPlaying = NowPlayingManager()
+    private let lyrics = LyricsService()
     private let glassMenu = GlassMenuController.shared
     private let gallery = AddTabGalleryController.shared
     private let fuelManager = FuelManager()
@@ -26,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        installCrashLogger()
+        CrashReporter.installHandler()
 
         // Agent app: no Dock icon, no menu bar app name.
         NSApp.setActivationPolicy(.accessory)
@@ -41,6 +42,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         buildPanel()
+
+        // Surface the previous run's crash (if any) now that the UI is up.
+        CrashReporter.presentPendingReportIfNeeded()
 
         // Light the collapsed-notch transfer spinner when an AirDrop file lands. With
         // Dynamic Island on, the same landing instead auto-expands into the island
@@ -149,6 +153,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
+        // Pinned lyrics: while the "keep lyrics in the notch" pin is on, fetch synced
+        // lyrics for whatever's playing so the collapsed notch can show the live line
+        // even with the panel closed. Fires on both a track change and the pin toggling
+        // on mid-song; `LyricsService.load` dedupes and disk-caches, so it's cheap. When
+        // the pin is off we simply don't fetch (the Media tab's lyrics view fetches on
+        // its own when opened).
+        settings.$pinLyrics
+            .combineLatest(nowPlaying.$islandKey)
+            .sink { [weak self] pinned, _ in
+                guard let self, pinned, self.nowPlaying.hasTrack else { return }
+                self.lyrics.load(for: self.nowPlaying)
+            }
+            .store(in: &cancellables)
+
         // Dynamic Island: a finished countdown auto-expands the pill into a "Time's
         // up" alert. `dropFirst` skips the idle `false` at launch; the guard ignores
         // the reset back to `false` when the alert is dismissed.
@@ -211,36 +229,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Crash logging
-
-    /// Writes uncaught Objective-C exceptions to ~/Library/Logs/NotchGlass/crash.log
-    /// so failures leave a readable report even for this borderless agent app.
-    private func installCrashLogger() {
-        // The handler must be a non-capturing C function pointer, so it derives
-        // the log path itself rather than closing over anything.
-        NSSetUncaughtExceptionHandler { exception in
-            let dir = FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Library/Logs/NotchGlass", isDirectory: true)
-            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            let logURL = dir.appendingPathComponent("crash.log")
-
-            let report = """
-            [\(Date())] \(exception.name.rawValue)
-            \(exception.reason ?? "no reason")
-
-            \(exception.callStackSymbols.joined(separator: "\n"))
-
-            """
-            if let handle = try? FileHandle(forWritingTo: logURL) {
-                handle.seekToEndOfFile()
-                handle.write(Data(report.utf8))
-                try? handle.close()
-            } else {
-                try? report.write(to: logURL, atomically: true, encoding: .utf8)
-            }
-        }
-    }
-
     // MARK: - Panel
 
     private func buildPanel() {
@@ -253,6 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             RootView()
                 .environmentObject(viewModel)
                 .environmentObject(nowPlaying)
+                .environmentObject(lyrics)
                 .environmentObject(settings)
                 .environmentObject(glassMenu)
                 .environmentObject(gallery)

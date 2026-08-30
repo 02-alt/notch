@@ -34,6 +34,43 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.08.3",
+            summary: "Sing along, and a safety net when things go wrong.",
+            changes: [
+                ReleaseChange(
+                    symbol: "music.note.list",
+                    title: "Live lyrics",
+                    detail: "The Media tab now shows time-synced, auto-scrolling lyrics right beside the player — the current line lights up and tapping any line seeks the song there. Fetched from the free LRCLIB database and cached on disk, so a replay is instant and works offline."
+                ),
+                ReleaseChange(
+                    symbol: "quote.bubble.fill",
+                    title: "Lyrics on the closed notch",
+                    detail: "Pin the lyrics and the current line rides along on the collapsed notch, so you can follow the words with the panel shut."
+                ),
+                ReleaseChange(
+                    symbol: "ladybug.fill",
+                    title: "Crash reports",
+                    detail: "If the app ever quits unexpectedly, the next launch surfaces a tidy report of what went wrong — copy it or reveal the log in Finder to send it along. Saved locally to ~/Library/Logs/NotchGlass."
+                ),
+            ]
+        ),
+        ReleaseNote(
+            version: "1.26.08.2",
+            summary: "Chats that stay, in pure black and white.",
+            changes: [
+                ReleaseChange(
+                    symbol: "bubble.left.and.bubble.right.fill",
+                    title: "Chats that persist",
+                    detail: "Conversations in the Chat tab now save to disk and reload on launch — quitting no longer loses your thread. Keep several chats side by side, switch with the pill row, and start a new one with “+”."
+                ),
+                ReleaseChange(
+                    symbol: "circle.lefthalf.filled",
+                    title: "Pure monochrome",
+                    detail: "The Noir and Light themes dropped the amber accent — they're now clean, uniform black-and-white surfaces."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.08.1",
             summary: "Three new tabs and a smarter closed notch.",
             changes: [

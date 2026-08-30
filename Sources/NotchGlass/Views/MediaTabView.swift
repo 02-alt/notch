@@ -9,10 +9,17 @@ import AppKit
 struct MediaTabView: View {
     @EnvironmentObject private var np: NowPlayingManager
     @EnvironmentObject private var settings: SettingsStore
+    @EnvironmentObject private var lyrics: LyricsService
 
     /// Dominant colour pulled from the current artwork; nil until computed / when
     /// there's no art. Drives the scrubber fill and the play-button glow.
     @State private var cover: Color?
+
+    /// Whether the tab is showing the synced lyrics instead of the artwork + metadata.
+    /// Folded into this one tab (rather than a separate Lyrics tab) so following the
+    /// words never means flipping tabs away from the transport. Persisted in settings so
+    /// the panel height can grow to fit the lyrics (see `Metrics.bodyHeight`).
+    private var showLyrics: Bool { settings.mediaLyrics }
 
     /// The live tint: the album colour when we have one, else the user's accent.
     private var tint: Color { cover ?? settings.accent }
@@ -40,24 +47,10 @@ struct MediaTabView: View {
             content
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Picture-in-Picture (browser video only) floats in the corner so it never
-        // unbalances the symmetric control row.
-        .overlay(alignment: .topTrailing) {
-            if np.supportsPiP {
-                Button { np.togglePiP() } label: {
-                    Image(systemName: "pip.enter")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 24, height: 24)
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .blackGlass(in: Circle(), interactive: true)
-                .linkCursor()
-                .help("Picture in Picture")
-                .padding(Spacing.md)
-            }
-        }
+        // Top-right control cluster: lyrics toggle, the pin-to-notch button (only while
+        // lyrics are shown) and Picture-in-Picture (browser video only). Kept in one
+        // corner so they never unbalance the symmetric transport row below.
+        .overlay(alignment: .topTrailing) { topControls }
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         // Recompute the palette whenever the artwork changes (new track).
         .task(id: np.artwork) { cover = np.artwork.flatMap(AlbumPalette.dominant) }
@@ -106,58 +99,125 @@ struct MediaTabView: View {
 
     private var content: some View {
         VStack(spacing: Spacing.s) {
-            HStack(alignment: .top, spacing: Spacing.lg) {
-                // Left column: just the cover. The bottom row spans the full panel
-                // width below (see `controls`), so the source chips ride the far-left
-                // inset in line with the artwork — not tucked under it.
-                if settings.showArtwork {
-                    artwork
+            if showLyrics {
+                // Lyrics take the upper region full-width; the scrubber + transport row
+                // below stay put so you can seek anywhere in the song without leaving
+                // the lyrics.
+                LyricsView(tint: tint)
+                    // Clear the top-right control cluster.
+                    .padding(.trailing, Spacing.xl)
+                if !np.isLive {
+                    scrubberRow
                 }
-
-                VStack(alignment: .leading, spacing: Spacing.xs) {
-                    Text(np.title.uppercased())
-                        .font(.system(size: 14, weight: .heavy))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
-                        // Keep the title (and artist) clear of the floating PiP button
-                        // in the top-right, so a long title truncates instead of
-                        // sliding underneath it.
-                        .padding(.trailing, np.supportsPiP ? Spacing.xl : 0)
-
-                    Text(np.artist.isEmpty ? "—" : np.artist)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(1)
-                        .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
-                        .padding(.trailing, np.supportsPiP ? Spacing.xl : 0)
-
-                    Spacer(minLength: 6)
-
-                    if np.isLive {
-                        liveIndicator
-                    } else {
-                        Scrubber(tint: tint)
-
-                        HStack {
-                            Text(Self.time(np.position))
-                            Spacer()
-                            Text(Self.time(np.duration))
-                        }
-                        .font(.system(size: 10, weight: .medium).monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.8))
-                        .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                nowPlayingInfo
             }
-            .frame(maxHeight: .infinity)
 
             // Full-width bottom row: sources · playback · volume, sharing one baseline
             // edge-to-edge across the whole panel.
             controls
         }
         .padding(Spacing.lg)
+    }
+
+    /// The default upper region: album art beside the title / artist / scrubber.
+    private var nowPlayingInfo: some View {
+        HStack(alignment: .top, spacing: Spacing.lg) {
+            // Left column: just the cover. The bottom row spans the full panel
+            // width below (see `controls`), so the source chips ride the far-left
+            // inset in line with the artwork — not tucked under it.
+            if settings.showArtwork {
+                artwork
+            }
+
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                Text(np.title.uppercased())
+                    .font(.system(size: 14, weight: .heavy))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
+                    // Keep the title (and artist) clear of the floating top-right
+                    // control cluster, so a long title truncates instead of sliding
+                    // underneath it.
+                    .padding(.trailing, Spacing.xl)
+
+                Text(np.artist.isEmpty ? "—" : np.artist)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(1)
+                    .shadow(color: .black.opacity(0.5), radius: 4, y: 1)
+                    .padding(.trailing, Spacing.xl)
+
+                Spacer(minLength: 6)
+
+                if np.isLive {
+                    liveIndicator
+                } else {
+                    scrubberRow
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    /// The seek bar plus elapsed / remaining times. Shared by the default player view
+    /// and the lyrics view, so you can scrub to anywhere in the song without leaving
+    /// the lyrics.
+    private var scrubberRow: some View {
+        VStack(spacing: Spacing.xs) {
+            Scrubber(tint: tint)
+            HStack {
+                Text(Self.time(np.position))
+                Spacer()
+                Text(Self.time(np.duration))
+            }
+            .font(.system(size: 10, weight: .medium).monospacedDigit())
+            .foregroundStyle(.white.opacity(0.8))
+            .shadow(color: .black.opacity(0.4), radius: 3, y: 1)
+        }
+    }
+
+    // MARK: - Top-right controls
+
+    @ViewBuilder
+    private var topControls: some View {
+        HStack(spacing: Spacing.sm) {
+            // Lyrics toggle — always available; flips the upper region to the synced words.
+            circleButton(symbol: "quote.bubble.fill",
+                         on: showLyrics,
+                         help: showLyrics ? "Hide lyrics" : "Show lyrics") {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { settings.mediaLyrics.toggle() }
+            }
+            // Pin the current line to the collapsed notch — only meaningful while lyrics
+            // are on screen, so it rides in beside the toggle then.
+            if showLyrics {
+                circleButton(symbol: settings.pinLyrics ? "pin.fill" : "pin",
+                             on: settings.pinLyrics,
+                             help: settings.pinLyrics ? "Unpin from notch" : "Keep lyrics in the notch") {
+                    settings.pinLyrics.toggle()
+                }
+            }
+            if np.supportsPiP {
+                circleButton(symbol: "pip.enter", on: false, help: "Picture in Picture") {
+                    np.togglePiP()
+                }
+            }
+        }
+        .padding(Spacing.md)
+    }
+
+    /// A small glass circle button used by the top-right cluster; `on` lights it with
+    /// the album tint so an active toggle (lyrics shown, pinned) reads at a glance.
+    /// Wraps the shared ``GlassButton`` (press + cursor + glass), adding the icon + help.
+    private func circleButton(symbol: String, on: Bool, help: String, action: @escaping () -> Void) -> some View {
+        GlassButton(shape: AnyShape(Circle()), tint: on ? tint.opacity(0.55) : nil, action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 24, height: 24)
+        }
+        .help(help)
     }
 
     /// The crisp cover floating over its own blur, with a soft drop shadow so it
@@ -420,13 +480,20 @@ private struct VolumeButton: View {
         .linkCursor()
         .help(np.volume > 0.001 ? "Mute" : "Unmute")
         .onHover { overGlyph = $0 }
-        .overlay(alignment: .bottom) {
+        // Trailing-anchored so the slider opens up-and-to-the-left from the speaker,
+        // keeping it inside the panel's right edge (the speaker sits at the far right in
+        // every mode, so a centre-anchored popover would overflow and clip).
+        .overlay(alignment: .bottomTrailing) {
             VolumeSlider(tint: tint)
                 .frame(width: 96, height: 14)
                 .padding(.horizontal, Spacing.base)
                 .padding(.vertical, Spacing.sm)
-                .background(Capsule(style: .continuous).fill(Color.black.opacity(0.82)))
+                // Near-opaque so it reads as a clean popover — in lyrics mode the
+                // scrubber's remaining-time sits right behind it and would otherwise
+                // bleed through a translucent fill.
+                .background(Capsule(style: .continuous).fill(Color.black.opacity(0.97)))
                 .overlay(Capsule(style: .continuous).strokeBorder(Color.white.opacity(0.14), lineWidth: 1))
+                .shadow(color: .black.opacity(0.5), radius: 8, y: 2)
                 .fixedSize()
                 // Sits flush on top of the glyph so the pointer can cross into it.
                 .offset(y: -30)

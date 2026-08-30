@@ -51,6 +51,21 @@ final class SettingsStore: ObservableObject {
         didSet { defaults.set(showArtwork, forKey: "set.showArtwork") }
     }
 
+    /// Whether the Media tab is showing lyrics (vs. the artwork + metadata). Persisted
+    /// so the mode sticks across opens, and so the panel height can grow to give the
+    /// lyrics + scrubber room to breathe (see `Metrics.bodyHeight`).
+    @Published var mediaLyrics: Bool {
+        didSet { defaults.set(mediaLyrics, forKey: "set.mediaLyrics") }
+    }
+
+    /// Keep the current synced lyric line showing on the *collapsed* notch, so you can
+    /// follow along while working with the panel closed. Toggled from the Media tab's
+    /// lyrics view; drives the collapsed line in `CollapsedMediaView` and keeps
+    /// `LyricsService` fetching on every track change (see `AppDelegate`).
+    @Published var pinLyrics: Bool {
+        didSet { defaults.set(pinLyrics, forKey: "set.pinLyrics") }
+    }
+
     /// What the *collapsed* notch shows. Media is the now-playing peek (art + EQ);
     /// fuel events are transient notices like "Fuel refilled" that need a slow
     /// background poll of your Claude usage, so they're opt-in.
@@ -209,6 +224,8 @@ final class SettingsStore: ObservableObject {
             enabledSources = [.music, .spotify, .safari, .chrome]
         }
         showArtwork = defaults.object(forKey: "set.showArtwork") as? Bool ?? true
+        mediaLyrics = defaults.object(forKey: "set.mediaLyrics") as? Bool ?? false
+        pinLyrics = defaults.object(forKey: "set.pinLyrics") as? Bool ?? false
         collapsedShowsMedia = defaults.object(forKey: "set.collapsedShowsMedia") as? Bool ?? true
         collapsedShowsFuelEvents = defaults.object(forKey: "set.collapsedShowsFuelEvents") as? Bool ?? false
         dynamicIsland = defaults.object(forKey: "set.dynamicIsland") as? Bool ?? false
