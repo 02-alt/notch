@@ -22,16 +22,25 @@ struct MediaTabView: View {
     private var showLyrics: Bool { settings.mediaLyrics }
 
     /// The live tint: the album colour when we have one, else the user's accent.
-    private var tint: Color { cover ?? settings.accent }
+    /// Noir is a strictly monochrome scheme, so it never picks up the artwork colour —
+    /// the scrubber fill and play button stay near-white (`Theme.accent`) like the rest
+    /// of the Noir UI, instead of "recolouring" orange/red per track.
+    private var tint: Color { isNoir ? Theme.accent : (cover ?? settings.accent) }
 
     /// On the Liquid Glass theme we let the panel's Siri-glass hood be the player's
     /// surface — no opaque card — so the desktop refracts through and the album colour
     /// blooms *into* the glass. Every other theme keeps the immersive album card.
     private var isGlass: Bool { settings.panelTheme == .glass }
 
+    /// Noir drops the immersive album card entirely: the player sits directly on the
+    /// panel's solid-black surface (no blurred backdrop, no black-glass rim). That
+    /// avoids the framed card floating in a sea of black — the surplus lower region
+    /// simply blends into the flat Noir surface instead of reading as a dead band.
+    private var isNoir: Bool { settings.panelTheme == .noir }
+
     var body: some View {
         ZStack {
-            if !isGlass {
+            if !isGlass && !isNoir {
                 backdrop
                 // The smoked "black Liquid Glass" surface, laid over the immersive album
                 // backdrop: the artwork lenses faintly through the glass (like the

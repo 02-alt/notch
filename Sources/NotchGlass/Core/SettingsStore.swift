@@ -213,15 +213,32 @@ final class SettingsStore: ObservableObject {
     private init() {
         launchAtLogin = defaults.bool(forKey: "set.launchAtLogin")
         accentHex = defaults.string(forKey: "set.accentHex") ?? "4C84FA"
-        // Liquid Glass is the app's default look; the others are opt-in in Settings.
-        panelTheme = PanelTheme(rawValue: defaults.string(forKey: "set.panelTheme") ?? "") ?? .glass
+        // Noir (deep-black monochrome) is the app's default look; the others are opt-in in Settings.
+        panelTheme = PanelTheme(rawValue: defaults.string(forKey: "set.panelTheme") ?? "") ?? .noir
         mediaPriority = MediaSource(rawValue: defaults.string(forKey: "set.mediaPriority") ?? "") ?? .spotify
+        // Only auto-enable Yoin once it's actually installed — never pre-enable a player
+        // the user doesn't have, or a later install would be silently contacted (and
+        // prompt for Automation) without the user ever choosing it.
+        let yoinInstalled = NSWorkspace.shared
+            .urlForApplication(withBundleIdentifier: MediaSource.yoin.bundleID) != nil
         if let raw = defaults.array(forKey: "set.enabledSources") as? [String] {
-            enabledSources = Set(raw.compactMap { MediaSource(rawValue: $0) })
+            var sources = Set(raw.compactMap { MediaSource(rawValue: $0) })
+            // One-time: fold Yoin into an existing install's enabled set (it didn't
+            // exist when they first configured sources). Deferred until Yoin is present,
+            // then respected if later disabled. Persist immediately — assigning in init
+            // doesn't fire the didSet, so otherwise the added source is dropped next launch.
+            if yoinInstalled && !defaults.bool(forKey: "set.yoinAdded") {
+                sources.insert(.yoin)
+                defaults.set(sources.map(\.rawValue), forKey: "set.enabledSources")
+                defaults.set(true, forKey: "set.yoinAdded")
+            }
+            enabledSources = sources
         } else {
-            // Default: the mainstream players only, so a fresh install doesn't
-            // prompt for every browser you happen to have installed.
-            enabledSources = [.music, .spotify, .safari, .chrome]
+            // Default: the mainstream players (plus Yoin when installed) only, so a fresh
+            // install doesn't prompt for every browser — or a player — you don't have.
+            var defaults0: Set<MediaSource> = [.music, .spotify, .safari, .chrome]
+            if yoinInstalled { defaults0.insert(.yoin); defaults.set(true, forKey: "set.yoinAdded") }
+            enabledSources = defaults0
         }
         showArtwork = defaults.object(forKey: "set.showArtwork") as? Bool ?? true
         mediaLyrics = defaults.object(forKey: "set.mediaLyrics") as? Bool ?? false

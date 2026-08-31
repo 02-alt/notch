@@ -34,6 +34,27 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.08.5",
+            summary: "A new player joins, and black takes the lead.",
+            changes: [
+                ReleaseChange(
+                    symbol: "music.note.house.fill",
+                    title: "Yoin support",
+                    detail: "The Media tab now reads and controls Yoin, the Bandcamp player — track, artwork, scrubbing, volume and transport, just like Music and Spotify. It shows up automatically once Yoin is installed."
+                ),
+                ReleaseChange(
+                    symbol: "circle.fill",
+                    title: "Black by default",
+                    detail: "New installs now open in the deep-black Noir theme. Prefer the Liquid Glass or Light look? Switch any time in Settings."
+                ),
+                ReleaseChange(
+                    symbol: "square.on.square.dashed",
+                    title: "Cleaner black player",
+                    detail: "On the Noir theme the Media player sits directly on the flat black surface — no floating glass card, no empty band — and stays strictly monochrome instead of tinting to each cover's colour."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.08.4",
             summary: "Sing along, and a safety net when things go wrong.",
             changes: [

@@ -12,6 +12,7 @@ enum MediaSource: String, CaseIterable {
     case edge = "Microsoft Edge"
     case vivaldi = "Vivaldi"
     case arc = "Arc"
+    case yoin = "Yoin"
 
     var bundleID: String {
         switch self {
@@ -23,12 +24,18 @@ enum MediaSource: String, CaseIterable {
         case .edge:    return "com.microsoft.edgemac"
         case .vivaldi: return "com.vivaldi.Vivaldi"
         case .arc:     return "company.thebrowser.Browser"
+        case .yoin:    return "com.yoin.player"
         }
     }
 
     /// Browsers are read/controlled via injected JavaScript rather than the
-    /// scriptable player commands the music apps expose.
-    var isBrowser: Bool { self != .music && self != .spotify }
+    /// scriptable player commands the native music apps (Music, Spotify, Yoin) expose.
+    var isBrowser: Bool {
+        switch self {
+        case .music, .spotify, .yoin: return false
+        default: return true
+        }
+    }
 
     /// Chromium browsers all share Chrome's `execute … javascript` AppleScript
     /// command; Safari uses its own `do JavaScript … in current tab`.
@@ -411,7 +418,8 @@ final class NowPlayingManager: ObservableObject {
         let durationExpr = source == .spotify
             ? "(duration of current track) / 1000"
             : "duration of current track"
-        let artworkExpr = source == .spotify
+        // Spotify and Yoin both expose an HTTP `artwork url` on the current track.
+        let artworkExpr = (source == .spotify || source == .yoin)
             ? #"& linefeed & (artwork url of current track)"#
             : ""
 
@@ -440,7 +448,7 @@ final class NowPlayingManager: ObservableObject {
             duration: Self.parseSeconds(parts[3]),
             position: Self.parseSeconds(parts[4]),
             playing: parts[5].lowercased().contains("playing"),
-            // Volume is a 0–100 app property; artwork URL (Spotify only) trails it.
+            // Volume is a 0–100 app property; artwork URL (Spotify / Yoin only) trails it.
             artworkURL: parts.count >= 8 ? parts[7] : nil,
             volume: parts.count >= 7 ? Self.parseSeconds(parts[6]) / 100 : nil
         )
