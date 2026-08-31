@@ -34,6 +34,17 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.08.6",
+            summary: "A crash fix for the Ambient tab.",
+            changes: [
+                ReleaseChange(
+                    symbol: "cloud.rain.fill",
+                    title: "Ambient no longer crashes",
+                    detail: "Choosing Rain or Storm in the Ambient tab could crash the app — and because the choice was remembered, it would then crash again on every launch. Both soundscapes now play correctly, and the fix clears the loop on its own, no reinstall needed."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.08.5",
             summary: "A new player joins, and black takes the lead.",
             changes: [

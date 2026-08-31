@@ -131,7 +131,13 @@ final class AmbientPlayer {
         catch { NSLog("AmbientPlayer: read failed for \(resource): \(error)"); return nil }
 
         let matched: AVAudioPCMBuffer
-        if srcFormat.sampleRate == target.sampleRate && srcFormat.channelCount == target.channelCount {
+        // Compare the *whole* format, not just sample rate + channel count. A file whose
+        // decoded rate/channels already match `target` can still differ in interleaving or
+        // channel layout (rain/storm decode to 48 kHz stereo but not necessarily to the
+        // engine's exact standard layout). Scheduling such a buffer on the player — whose
+        // output bus is wired to `target` — raises an uncaught Obj-C exception and crashes
+        // the app. Only skip the resample when the formats are byte-for-byte identical.
+        if srcFormat == target {
             matched = raw
         } else if let converted = convert(raw, to: target) {
             matched = converted
