@@ -82,6 +82,16 @@ enum Updater {
         }
         alert.addButton(withTitle: "OK")
 
+        // The notch panel floats at `.statusBar + 1`. A default alert opens *below*
+        // that, so it's hidden behind the notch — and since `runModal` blocks the run
+        // loop, it can't be reached to dismiss, which reads as the whole Mac freezing.
+        // Float the alert one level above the panel and center it clear of the notch.
+        let window = alert.window
+        window.level = .statusBar + 2
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        window.center()
+        window.orderFrontRegardless()
+
         let response = alert.runModal()
         if actionTitle != nil, response == .alertFirstButtonReturn, let actionURL {
             NSWorkspace.shared.open(actionURL)

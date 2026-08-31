@@ -34,6 +34,17 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.08.7",
+            summary: "The update dialog no longer hides behind the notch.",
+            changes: [
+                ReleaseChange(
+                    symbol: "arrow.up.forward.app.fill",
+                    title: "Update prompt fixed",
+                    detail: "Checking for updates could open the dialog behind the notch, where it couldn't be clicked and appeared to freeze the Mac. It now floats above the notch, front and centre. The crash-report window was raised the same way."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.08.6",
             summary: "A crash fix for the Ambient tab.",
             changes: [

@@ -121,6 +121,9 @@ enum CrashReporter {
         window.contentView = NSHostingView(rootView: view)
         window.center()
         window.appearance = NSAppearance(named: Theme.isLight ? .aqua : .darkAqua)
+        // Float above the notch panel (`.statusBar + 1`) so the report isn't hidden
+        // behind the notch where it can't be seen or reached.
+        window.level = .statusBar + 2
 
         let controller = NSWindowController(window: window)
         windowController = controller
