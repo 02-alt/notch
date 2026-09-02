@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import AppKit
 
 /// Fills the fixed-size panel window and morphs between the collapsed notch pill
@@ -97,18 +96,60 @@ struct RootView: View {
         if vm.collapsedEvent != nil {
             return CGSize(width: max(base.width + 168, 320), height: base.height + 12)
         }
+        // Pinned lyrics: widen into a ticker sized to fit the current line beside the
+        // album art, without touching the bare-notch height. An explicit "show this",
+        // so it outranks the resting modes below.
+        if lyricTickerActive {
+            return CGSize(width: lyricTickerWidth, height: base.height)
+        }
+        // Minimize mode: shrink the *resting* pill to a thin sliver. Checked before the
+        // Dynamic Island resting-widen so the two compose — with both on, the island
+        // rests as a sliver and still expands for its live activities (handled by the
+        // higher-priority `islandActivity`/`collapsedEvent` branches above).
+        if settings.minimalNotch {
+            return Metrics.minimalCollapsedSize(from: base)
+        }
         // Persistent island: even at rest the pill sits wider than the bare notch, so
         // switching the mode on visibly transforms the notch into an always-on island
         // with room for the time + battery either side of the camera.
         if settings.dynamicIsland {
             return CGSize(width: max(base.width + 150, 300), height: base.height + 6)
         }
-        // Pinned lyrics: widen into a ticker sized to fit the current line beside the
-        // album art, without touching the bare-notch height.
-        if lyricTickerActive {
-            return CGSize(width: lyricTickerWidth, height: base.height)
-        }
         return base
+    }
+
+    /// A live/transient peek is claiming the collapsed pill, so the resting modes
+    /// (Minimize, Dynamic Island) yield to it. Names the higher-priority branches of
+    /// `collapsedBodySize` so both it and `minimizedToSliver` read the same rule.
+    private var collapsedPeekActive: Bool {
+        vm.islandActivity != nil || vm.collapsedEvent != nil || lyricTickerActive
+    }
+
+    /// True while Minimize has shrunk the *idle* pill to a sliver — minimized,
+    /// collapsed, and no live peek taking the pill over (which would show full size).
+    private var minimizedToSliver: Bool {
+        settings.minimalNotch && !vm.isOpen && !collapsedPeekActive
+    }
+
+    /// The hover/hit footprint. The real notch bounds while minimized to a sliver (so
+    /// hovering the notch still opens the panel), otherwise just the rendered body.
+    private var hoverFootprint: CGSize {
+        minimizedToSliver ? vm.collapsedSize : bodySize
+    }
+
+    /// The quick right-click menu on the collapsed notch: toggle Minimize, and Quit.
+    private var notchMenu: [GlassMenuItem] {
+        [
+            .item(settings.minimalNotch ? "Restore notch size" : "Minimize notch",
+                  systemImage: settings.minimalNotch
+                      ? "arrow.up.left.and.arrow.down.right"
+                      : "arrow.down.right.and.arrow.up.left") {
+                settings.minimalNotch.toggle()
+            },
+            .item("Quit", systemImage: "power", destructive: true) {
+                NSApp.terminate(nil)
+            }
+        ]
     }
 
     /// Dynamic Island mode detaches the *whole* panel — collapsed capsule and open
@@ -222,9 +263,14 @@ struct RootView: View {
             // It carries no hover of its own — opening stays gated to the narrow
             // central trigger (`hoverShape`) so the collapsed pill still only arms
             // when the pointer is genuinely over the notch core.
+            //
+            // Sized to `hoverFootprint`, not the drawn body: while minimized to a
+            // sliver the interactive zone stays real-notch-sized, so this absorbs
+            // clicks across that whole zone (matching the hover trigger) rather than
+            // letting them fall through the invisible ring around the sliver.
             bodyShape
                 .fill(Color.white.opacity(0.001))
-                .frame(width: bodySize.width, height: bodySize.height)
+                .frame(width: hoverFootprint.width, height: hoverFootprint.height)
                 .offset(y: islandTopGap)
 
             // Surface: colors morph continuously as it expands — from the pure
@@ -234,6 +280,17 @@ struct RootView: View {
             // -frame in step with the spring, not a plain opacity crossfade.
             bodySurface
                 .frame(width: bodySize.width, height: bodySize.height)
+            // Open-panel right-click, layered *under* the panel content so the tabs'
+            // own context menus (tab-strip, fuel blocks, list rows, …) win over it —
+            // right-clicking the panel's background/chrome shows the notch menu, while
+            // right-clicking a menu-bearing item still shows that item's menu. Left
+            // clicks pass through (see `RightClickCatcher`). Collapsed uses the top
+            // catcher below instead (real-notch footprint, easier to hit).
+            .overlay {
+                if vm.isOpen {
+                    RightClickCatcher { point in glassMenu.show(notchMenu, at: point) }
+                }
+            }
             // Panel content rides on top and is revealed through the clip as the
             // body grows around it.
             .overlay(alignment: .top) {
@@ -245,8 +302,11 @@ struct RootView: View {
             // Now-playing peek shown while collapsed: art + a live EQ hugging the
             // notch edges. Fades out as the panel opens and never steals the hover.
             .overlay {
+                // Hidden while minimized to a sliver — the pill's too small to hold the
+                // peek legibly, so a clean sliver beats a clipped one. Live pop-outs
+                // (events/island/lyrics) clear `minimizedToSliver`, so they still show.
                 CollapsedMediaView(size: collapsedBodySize)
-                    .opacity(vm.isOpen ? 0 : 1)
+                    .opacity(vm.isOpen || minimizedToSliver ? 0 : 1)
                     .allowsHitTesting(false)
             }
             .clipShape(bodyShape)
@@ -300,6 +360,12 @@ struct RootView: View {
             // above and around it — open card and collapsed capsule alike. Welded
             // (non-island) states keep gap = 0 and hang from the bezel.
             .offset(y: islandTopGap)
+            // Pin the hit frame to the real notch bounds so the hover trigger below is
+            // sized from the notch, not the rendered pill. Normally this equals the
+            // body; while Minimize shrinks the *visible* pill to a sliver it stays
+            // full-size (the sliver sits top-centered inside), so hovering the notch
+            // still opens the panel even though only a sliver is drawn.
+            .frame(width: hoverFootprint.width, height: hoverFootprint.height, alignment: .top)
             // Hover target. Open: the whole panel silhouette, so it stays open
             // while the pointer roams the panel. Collapsed: a central zone inset
             // from the pill's sides, so it only opens when the pointer is actually
@@ -311,6 +377,15 @@ struct RootView: View {
             // the normal sense during a drag. We only open here — the actual drop
             // is caught by the frontmost tab content once the panel is expanded.
             .onDrop(of: [.fileURL, .url, .text], isTargeted: dragOverBinding) { _ in false }
+            // Right-click the collapsed notch for the quick glass menu. On top and
+            // sized to the real notch (via the hover frame above) so it's easy to hit
+            // even when minimized to a sliver. The open panel has its own catcher
+            // layered under the content (above) so it can't shadow the tab menus.
+            .overlay {
+                if !vm.isOpen {
+                    RightClickCatcher { point in glassMenu.show(notchMenu, at: point) }
+                }
+            }
         }
         // The window content area is sized for the largest body it will ever show
         // (the expanded Mood board) so the window itself never has to resize; the
@@ -330,6 +405,8 @@ struct RootView: View {
         .animation(Metrics.openSpring, value: settings.panelTheme)
         // Toggling Dynamic Island morphs the resting pill wider/narrower — spring it.
         .animation(Metrics.islandExpand, value: settings.dynamicIsland)
+        // Minimize shrinks the resting pill to a sliver (and back) — same morph.
+        .animation(Metrics.islandExpand, value: settings.minimalNotch)
         // Widening into (and out of) the pinned-lyrics ticker morphs like the island —
         // and re-sizes to each new line as the song plays.
         .animation(Metrics.islandExpand, value: lyricTickerActive)
@@ -542,7 +619,14 @@ private struct CenteredHoverShape: Shape {
         let baseInset = min(horizontalInset, rect.width / 2 - 1)
         // Reach from center each side once inset, then tightened for a smaller,
         // more central trigger core.
-        let reach = max(1, (rect.width / 2 - baseInset) * 0.35)
+        let tuned = (rect.width / 2 - baseInset) * 0.35
+        // Floor the reach so the open zone (= 2 × reach) is always a comfortable,
+        // reliably-hittable target. The fixed `horizontalInset` was tuned to the wide
+        // ~232pt fallback pill; on a narrower *physical* notch that formula alone
+        // shrinks the zone toward a near-unhittable hairline. `maxReach` keeps a 1pt
+        // margin each side so a very narrow notch can't invert the inset.
+        let maxReach = max(1, rect.width / 2 - 1)
+        let reach = min(maxReach, max(tuned, 20))
         let dx = rect.width / 2 - reach
         let r = rect.insetBy(dx: dx, dy: 0)
         return Path(roundedRect: r, cornerRadius: min(r.height / 2, 12), style: .continuous)

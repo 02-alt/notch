@@ -1,4 +1,4 @@
-import SwiftUI
+import Foundation
 import Combine
 
 /// A snapshot of Claude usage shown by the Fuel tab. `sessionUsed` / `weekUsed`

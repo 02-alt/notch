@@ -853,11 +853,6 @@ private struct AddPlacePanel: View {
 struct CitySnapshot: Equatable {
     var placeName: String
     var temp: Int
-    var feelsLike: Int
-    var humidity: Int
-    var wind: Int
-    var windUnit: String
-    var uv: Int
     var code: Int
     var isDay: Bool
     var hi: Int
@@ -959,19 +954,13 @@ final class CityWeatherStore: ObservableObject {
                                  label: dayLbl.string(from: date),
                                  code: r.daily.weather_code[safe: i] ?? 0,
                                  hi: Int((r.daily.temperature_2m_max[safe: i] ?? 0).rounded()),
-                                 lo: Int((r.daily.temperature_2m_min[safe: i] ?? 0).rounded()),
-                                 precip: (r.daily.precipitation_probability_max[safe: i] ?? nil) ?? 0))
+                                 lo: Int((r.daily.temperature_2m_min[safe: i] ?? 0).rounded())))
             if days.count >= 6 { break }
         }
 
         return CitySnapshot(
             placeName: placeName,
             temp: Int(r.current.temperature_2m.rounded()),
-            feelsLike: Int(r.current.apparent_temperature.rounded()),
-            humidity: Int(r.current.relative_humidity_2m.rounded()),
-            wind: Int(r.current.wind_speed_10m.rounded()),
-            windUnit: windUnit,
-            uv: Int((r.daily.uv_index_max.first ?? 0).rounded()),
             code: r.current.weather_code,
             isDay: r.current.is_day == 1,
             hi: Int(hi.rounded()), lo: Int(lo.rounded()),

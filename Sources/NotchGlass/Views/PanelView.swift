@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// The expanded glass panel: a top bar (tabs + gear) and the active tab body.
 struct PanelView: View {

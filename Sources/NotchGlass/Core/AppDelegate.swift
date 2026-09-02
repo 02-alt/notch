@@ -187,6 +187,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
+        // Recompute on wake too: after sleep the notch's auxiliary areas can report
+        // stale/nil for a moment, so `didChangeScreenParameters` alone can latch a
+        // conservative fallback size. `positionPanel` retries shortly after, so waking
+        // to the built-in display resolves to the exact notch bounds.
+        NSWorkspace.shared.notificationCenter
+            .publisher(for: NSWorkspace.didWakeNotification)
+            .sink { [weak self] _ in self?.positionPanel() }
+            .store(in: &cancellables)
+
         // When the panel collapses, hand keyboard focus back to whatever window was
         // active before. Editing a note makes the panel the key window (so it can
         // take keystrokes); without this the previously-focused app window stays
@@ -270,15 +279,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func notchSize(on screen: NSScreen) -> CGSize {
         let height = screen.safeAreaInsets.top
-        if height > 0,
-           let left = screen.auxiliaryTopLeftArea,
-           let right = screen.auxiliaryTopRightArea {
-            // Exactly the physical notch bounds: full width between the two
-            // auxiliary menu-bar areas, and the notch's own height. No extra
-            // padding, so the collapsed pill welds to the notch without spilling
-            // sideways over the menu bar.
-            let width = screen.frame.width - left.width - right.width
-            return CGSize(width: max(width, 120), height: height)
+        if height > 0 {
+            // Physical notch present (safe-area inset at the top).
+            if let left = screen.auxiliaryTopLeftArea,
+               let right = screen.auxiliaryTopRightArea {
+                // Exactly the physical notch bounds: full width between the two
+                // auxiliary menu-bar areas, and the notch's own height. No extra
+                // padding, so the collapsed pill welds to the notch without spilling
+                // sideways over the menu bar.
+                let width = screen.frame.width - left.width - right.width
+                return CGSize(width: max(width, 120), height: height)
+            }
+            // Notch present but the auxiliary areas aren't populated yet — they can be
+            // nil transiently during a display reconfigure or wake. Weld a conservative
+            // pill at the *real* notch height and the plain fallback width (never wider
+            // than a real notch, so it can't spill over the menu bar); the retry in
+            // `positionPanel` refines it once the areas resolve.
+            return CGSize(width: Metrics.fallbackNotchWidth, height: height)
         }
         // No physical notch: the pill floats just below the top edge, so a touch
         // of extra width reads better and can't overlap any real notch.
@@ -304,10 +321,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let screen = targetScreen {
             viewModel.collapsedSize = notchSize(on: screen)
             viewModel.hasNotch = screen.safeAreaInsets.top > 0
+            // Notch present but its auxiliary areas aren't populated yet (so `notchSize`
+            // returned the conservative fallback). Retry once, shortly, to pick up the
+            // exact bounds once the display finishes reconfiguring/waking.
+            if screen.safeAreaInsets.top > 0, screen.auxiliaryTopLeftArea == nil, !retryingNotchSize {
+                retryingNotchSize = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { [weak self] in
+                    self?.retryingNotchSize = false
+                    self?.positionPanel()
+                }
+            }
         }
         // `display: false` — the hosted SwiftUI content redraws reactively from the
         // `panelWidth` change, so we don't force a second synchronous window redraw on
         // every frame of a width-slider drag.
         panel?.setFrame(panelFrame(), display: false, animate: false)
     }
+
+    /// Guards the one-shot `positionPanel` retry so a display that never populates its
+    /// auxiliary areas can't spin a reposition loop.
+    private var retryingNotchSize = false
 }

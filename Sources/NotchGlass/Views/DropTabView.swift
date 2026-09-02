@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// AirDrop button + a drop-file shelf you can also drag files back out of.
 struct DropTabView: View {

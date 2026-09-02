@@ -7,6 +7,15 @@ enum Metrics {
     static let fallbackNotchWidth: CGFloat = 200
     static let fallbackNotchHeight: CGFloat = 32
 
+    /// The resting-pill size when Minimize mode is on: a thin sliver of the real
+    /// notch. Kept narrower and shorter than any physical notch so it hides against
+    /// the black bezel on a MacBook, and reads as a small hairline bar elsewhere. The
+    /// height stays above ~10pt so the collapsed glance can still shrink into it.
+    static func minimalCollapsedSize(from base: CGSize) -> CGSize {
+        CGSize(width: max(80, base.width * 0.6),
+               height: max(11, base.height * 0.42))
+    }
+
     /// Extra width added to each side of the collapsed pill on displays *without*
     /// a physical notch, where the pill floats below the top edge. On a real notch
     /// the pill matches the notch bounds exactly (see `AppDelegate.notchSize`), so
@@ -60,7 +69,10 @@ enum Metrics {
         // Media lost the collapsed-notch group to its own tab, so it's lighter now;
         // Notch carries the fuel-event card with its three-line caption, so it stays tall.
         case .media:      return 392
-        case .notch:      return 480
+        // Notch's right column stacks four captioned cards (now-playing, fuel events,
+        // Dynamic Island, Minimize), the last three with three-line captions, so it's
+        // the tallest pane.
+        case .notch:      return 600
         }
     }
 

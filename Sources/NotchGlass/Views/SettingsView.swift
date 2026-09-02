@@ -271,6 +271,11 @@ struct NotchSettingsView: View {
                 NotchToggle(isOn: $settings.dynamicIsland, accent: settings.accent,
                             label: "Dynamic Island")
             }
+            SettingRow("Minimize", icon: "arrow.down.right.and.arrow.up.left",
+                       caption: "Shrinks the idle notch to a thin sliver so it all but disappears. Hover to open as usual, and live notices still pop out. Also works with Dynamic Island.") {
+                NotchToggle(isOn: $settings.minimalNotch, accent: settings.accent,
+                            label: "Minimize notch")
+            }
         }
     }
 

@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import UniformTypeIdentifiers
 
 /// A tiny Claude scratchpad that lives in the notch: type a question, get an
 /// answer, without leaving whatever you're doing. It reuses the Claude Code login
@@ -10,7 +9,6 @@ import UniformTypeIdentifiers
 /// The transcript is saved to disk, so the conversation survives quitting and
 /// relaunching the app — it stays until you clear it with the trash button.
 struct AIScratchTabView: View {
-    @EnvironmentObject private var settings: SettingsStore
     @StateObject private var store = ScratchStore()
     @AppStorage("scratch.model") private var modelID = ScratchModel.opus.rawValue
     // Which backend the chat talks to: Claude in the cloud (default) or a local AI

@@ -34,6 +34,27 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.08.8",
+            summary: "Shrink the notch away, plus a right-click menu.",
+            changes: [
+                ReleaseChange(
+                    symbol: "arrow.down.right.and.arrow.up.left",
+                    title: "Minimize the notch",
+                    detail: "A new Minimize switch (Settings → Notch) shrinks the idle notch to a thin sliver so it all but disappears. Hover to open it as usual, and live notices still pop out. It even composes with Dynamic Island — the island rests as a sliver and still expands for activities."
+                ),
+                ReleaseChange(
+                    symbol: "cursorarrow.click.2",
+                    title: "Right-click menu",
+                    detail: "Right-click the notch — collapsed or open — for a quick menu to Minimize/Restore or Quit. On the open panel it never gets in the way of a tab's own menu."
+                ),
+                ReleaseChange(
+                    symbol: "macbook",
+                    title: "Steadier on MacBooks",
+                    detail: "Fixed a case where the notch could size itself wrong right after waking or reconnecting a display — briefly spilling over the menu bar — and it now re-measures on wake. Plus the hover-to-open target is easier to hit on narrower notches."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.08.7",
             summary: "The update dialog no longer hides behind the notch.",
             changes: [

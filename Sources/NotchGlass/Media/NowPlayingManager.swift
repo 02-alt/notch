@@ -170,11 +170,6 @@ final class NowPlayingManager: ObservableObject {
 
     func beginScrub() { isScrubbing = true }
 
-    func scrub(to seconds: Double) {
-        isScrubbing = true
-        position = seconds
-    }
-
     func endScrub(at seconds: Double) {
         guard let source else { isScrubbing = false; return }
         if source.isBrowser {

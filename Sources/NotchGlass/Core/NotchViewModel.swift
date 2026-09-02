@@ -311,7 +311,9 @@ final class NotchViewModel: ObservableObject {
     private func flushPendingPersists() {
         let pending = persistWork
         persistWork.removeAll()
-        for (_, work) in pending { work.perform() }
+        // Cancel the scheduled `asyncAfter` before running it now, so the same work item
+        // doesn't also fire later and repeat the JSON-encode + UserDefaults write.
+        for (_, work) in pending { work.cancel(); work.perform() }
     }
 
     init() {

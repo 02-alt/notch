@@ -23,13 +23,4 @@ extension Color {
     var readableForeground: Color {
         luminance > 0.6 ? .black : .white
     }
-
-    /// "RRGGBB" hex (no alpha).
-    var hexString: String {
-        let ns = NSColor(self).usingColorSpace(.sRGB) ?? .white
-        let r = Int(round(ns.redComponent * 255))
-        let g = Int(round(ns.greenComponent * 255))
-        let b = Int(round(ns.blueComponent * 255))
-        return String(format: "%02X%02X%02X", r, g, b)
-    }
 }

@@ -642,7 +642,6 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
 
     @Published var authorization: CLAuthorizationStatus = .notDetermined
     @Published var location: CLLocation?
-    @Published var speedKmh: Double = 0
 
     override init() {
         super.init()
@@ -675,7 +674,6 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         guard let loc = locations.last else { return }
         Task { @MainActor in
             location = loc
-            speedKmh = max(0, loc.speed) * 3.6
         }
     }
 }

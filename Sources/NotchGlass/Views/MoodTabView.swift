@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import UniformTypeIdentifiers
 import QuickLookThumbnailing
 
 /// The Mood board: a freeform canvas you can pin notes, links and files onto.

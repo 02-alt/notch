@@ -1,4 +1,4 @@
-import SwiftUI
+import Foundation
 
 /// Which AI's usage the Fuel tab is showing. The header title in the Fuel tab is a
 /// picker over these — Claude reads Claude Code's OAuth usage + local transcripts,

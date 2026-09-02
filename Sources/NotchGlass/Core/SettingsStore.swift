@@ -85,6 +85,16 @@ final class SettingsStore: ObservableObject {
         didSet { defaults.set(dynamicIsland, forKey: "set.dynamicIsland") }
     }
 
+    /// Minimize mode: shrink the *resting* notch to a thin sliver so it all but
+    /// disappears when idle — the full panel still springs open on hover, and live
+    /// notices (a fuel refill, an AirDrop) still pop out. Off by default. The hover
+    /// trigger stays anchored to the *real* notch bounds, so opening it is unchanged
+    /// even though the pill is barely visible. Composes with Dynamic Island: with both
+    /// on, the island rests as a sliver and still expands for its live activities.
+    @Published var minimalNotch: Bool {
+        didSet { defaults.set(minimalNotch, forKey: "set.minimalNotch") }
+    }
+
     /// The quiet stat shown on the collapsed pill's right edge when nothing else is
     /// happening (see ``CollapsedResting``). `.fuel` / `.battery` spin up a slow
     /// background reader; `.none` keeps the plain-black resting pill.
@@ -246,6 +256,7 @@ final class SettingsStore: ObservableObject {
         collapsedShowsMedia = defaults.object(forKey: "set.collapsedShowsMedia") as? Bool ?? true
         collapsedShowsFuelEvents = defaults.object(forKey: "set.collapsedShowsFuelEvents") as? Bool ?? false
         dynamicIsland = defaults.object(forKey: "set.dynamicIsland") as? Bool ?? false
+        minimalNotch = defaults.object(forKey: "set.minimalNotch") as? Bool ?? false
         collapsedResting = CollapsedResting(rawValue: defaults.string(forKey: "set.collapsedResting") ?? "") ?? .none
         collapsedFuelCombined = defaults.object(forKey: "set.collapsedFuelCombined") as? Bool ?? false
         defaultTab = NotchTab(rawValue: defaults.string(forKey: "set.defaultTab") ?? "") ?? .media

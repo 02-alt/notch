@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// A quick-access website shelf with folders. The top level shows folders and
 /// loose sites; tapping a folder drills in to manage its sites. Everything opens

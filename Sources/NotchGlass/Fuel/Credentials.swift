@@ -9,17 +9,9 @@ import Foundation
 /// back, so there's no keychain-write / OAuth-refresh surface here.
 struct Credentials {
     var accessToken: String
-    var expiresAt: Int?            // epoch milliseconds, as Claude Code stores it
 
     private static let service = "Claude Code-credentials"
     private static var filePath: String { ("~/.claude/.credentials.json" as NSString).expandingTildeInPath }
-
-    /// True when the access token is expired (or within a minute of it). We can't
-    /// refresh, so callers just try anyway and surface a sign-in prompt on 401.
-    var isExpired: Bool {
-        guard let ms = expiresAt else { return false }
-        return Date().timeIntervalSince1970 * 1000 >= Double(ms) - 60_000
-    }
 
     static func load() -> Credentials? {
         if let data = FileManager.default.contents(atPath: filePath), let c = parse(data) { return c }
@@ -31,8 +23,7 @@ struct Credentials {
         guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let oauth = o["claudeAiOauth"] as? [String: Any],
               let tok = oauth["accessToken"] as? String, !tok.isEmpty else { return nil }
-        let exp = (oauth["expiresAt"] as? Int) ?? (oauth["expiresAt"] as? NSNumber)?.intValue
-        return Credentials(accessToken: tok, expiresAt: exp)
+        return Credentials(accessToken: tok)
     }
 
     // Read the CLI's keychain item via /usr/bin/security — no extra entitlements,

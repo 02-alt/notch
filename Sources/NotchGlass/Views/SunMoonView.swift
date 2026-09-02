@@ -557,7 +557,6 @@ struct MoonDisc: View {
 /// waning direction legible at a glance. Mirrors the reference "orb row" block.
 struct MoonPhaseStripCard: View {
     let model: SkyModel
-    let accent: Color
 
     /// Days shown on each side of today → `2 * span + 1` discs.
     private static let span = 3
@@ -671,7 +670,6 @@ struct MoonPhaseStripCard: View {
 /// evening golden-hour) times called out above it.
 struct DaylightBandCard: View {
     let model: SkyModel
-    let accent: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.base) {
@@ -905,10 +903,10 @@ struct SunMoonBoardView: View {
     private func blockView(_ block: SunMoonBlock, model: SkyModel) -> some View {
         switch block {
         case .sunArc:       SunArcCard(model: model, accent: accent)
-        case .daylightBand: DaylightBandCard(model: model, accent: accent)
+        case .daylightBand: DaylightBandCard(model: model)
         case .goldenHour:   GoldenHourCard(model: model)
         case .moon:         MoonCard(model: model)
-        case .moonPhases:   MoonPhaseStripCard(model: model, accent: accent)
+        case .moonPhases:   MoonPhaseStripCard(model: model)
         }
     }
 

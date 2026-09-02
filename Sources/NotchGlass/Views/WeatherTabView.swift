@@ -283,16 +283,8 @@ enum WeatherMode: String, CaseIterable, Identifiable {
 /// The distilled "right now" readout the hero and details grid draw from.
 struct CurrentWeather: Equatable {
     let temp: Int
-    let feelsLike: Int
-    let humidity: Int
-    let wind: Int
-    let windUnit: String
-    let uv: Int
     let code: Int
     let isDay: Bool
-    /// Today's high/low, lifted from the first daily row.
-    let hi: Int
-    let lo: Int
 }
 
 /// One hour in the horizontal strip.
@@ -311,8 +303,6 @@ struct DayEntry: Identifiable, Equatable {
     let code: Int
     let hi: Int
     let lo: Int
-    /// Max chance of precipitation, 0…100.
-    let precip: Int
 }
 
 // MARK: - Manager
@@ -326,8 +316,6 @@ final class WeatherManager: ObservableObject {
     static let shared = WeatherManager()
 
     @Published private(set) var current: CurrentWeather?
-    @Published private(set) var hourly: [HourEntry] = []
-    @Published private(set) var daily: [DayEntry] = []
     @Published private(set) var placeName = ""
     @Published private(set) var loading = false
     @Published private(set) var errorText: String?
@@ -384,64 +372,11 @@ final class WeatherManager: ObservableObject {
     }
 
     private func apply(_ r: OpenMeteoResponse, windUnit: String) {
-        let tz = TimeZone(identifier: r.timezone ?? "") ?? .current
-
-        // Today's hi/lo come from the first daily row.
-        let todayHi = r.daily.temperature_2m_max.first ?? r.current.temperature_2m
-        let todayLo = r.daily.temperature_2m_min.first ?? r.current.temperature_2m
-
         current = CurrentWeather(
             temp: Int(r.current.temperature_2m.rounded()),
-            feelsLike: Int(r.current.apparent_temperature.rounded()),
-            humidity: Int(r.current.relative_humidity_2m.rounded()),
-            wind: Int(r.current.wind_speed_10m.rounded()),
-            windUnit: windUnit,
-            uv: Int((r.daily.uv_index_max.first ?? 0).rounded()),
             code: r.current.weather_code,
-            isDay: r.current.is_day == 1,
-            hi: Int(todayHi.rounded()),
-            lo: Int(todayLo.rounded())
+            isDay: r.current.is_day == 1
         )
-
-        // Hours from the current hour onward, capped to the next 12.
-        let now = Date()
-        let hourFmt = Self.formatter("yyyy-MM-dd'T'HH:mm", tz: tz)
-        let hourLabel = Self.formatter("ha", tz: tz)
-        var hours: [HourEntry] = []
-        for (i, t) in r.hourly.time.enumerated() {
-            guard let date = hourFmt.date(from: t) else { continue }
-            // Keep the hour we're inside plus everything ahead of it.
-            guard date.timeIntervalSince(now) > -3600 else { continue }
-            let temp = r.hourly.temperature_2m[safe: i] ?? 0
-            let code = r.hourly.weather_code[safe: i] ?? 0
-            let isDay = (r.hourly.is_day[safe: i] ?? 1) == 1
-            hours.append(HourEntry(id: i,
-                                   label: hourLabel.string(from: date).lowercased(),
-                                   temp: Int(temp.rounded()),
-                                   code: code,
-                                   isDay: isDay))
-            if hours.count >= 12 { break }
-        }
-        hourly = hours
-
-        // Days from tomorrow onward (today lives in the hero), capped to 6 rows.
-        let dayFmt = Self.formatter("yyyy-MM-dd", tz: tz)
-        let dayLabel = Self.formatter("EEE", tz: tz)
-        let cal = Calendar.current
-        var days: [DayEntry] = []
-        for (i, t) in r.daily.time.enumerated() {
-            guard let date = dayFmt.date(from: t) else { continue }
-            let label = cal.isDateInToday(date) ? "Today" : dayLabel.string(from: date)
-            if cal.isDateInToday(date) { continue }
-            days.append(DayEntry(id: i,
-                                 label: label,
-                                 code: r.daily.weather_code[safe: i] ?? 0,
-                                 hi: Int((r.daily.temperature_2m_max[safe: i] ?? 0).rounded()),
-                                 lo: Int((r.daily.temperature_2m_min[safe: i] ?? 0).rounded()),
-                                 precip: (r.daily.precipitation_probability_max[safe: i] ?? nil) ?? 0))
-            if days.count >= 6 { break }
-        }
-        daily = days
     }
 
     private func reverseGeocode(latitude: Double, longitude: Double) async {

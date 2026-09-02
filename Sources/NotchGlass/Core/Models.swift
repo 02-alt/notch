@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// The tabs of the notch panel.
 enum NotchTab: String, CaseIterable, Identifiable {

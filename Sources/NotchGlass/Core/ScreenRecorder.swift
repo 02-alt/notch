@@ -71,10 +71,6 @@ final class ScreenRecorder: ObservableObject {
         proc.interrupt()
     }
 
-    func toggleRecording() {
-        isRecording ? stopRecording() : startRecording()
-    }
-
     /// Full-screen video with the in-notch Stop screen — the long-lived `-v`
     /// process this tab drives directly (see `startRecording`/`stopRecording`).
     func recordFullScreen() { startRecording() }
