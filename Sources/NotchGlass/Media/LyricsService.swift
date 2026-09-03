@@ -113,11 +113,13 @@ final class LyricsService: ObservableObject {
     }
 
     /// The single gate for "show the pinned-lyrics ticker on the collapsed notch":
-    /// the pin is on, something's playing, it has synced lyrics, and Dynamic Island
-    /// isn't taking the pill (that mode owns the collapsed notch). Shared by `RootView`
-    /// (pill width) and `CollapsedMediaView` (content) so the two never drift.
-    func tickerActive(pinned: Bool, hasTrack: Bool, dynamicIsland: Bool) -> Bool {
-        pinned && hasTrack && hasSyncedLyrics && !dynamicIsland
+    /// the pin is on, something's playing, and it has synced lyrics. Works in Dynamic
+    /// Island mode too — the pinned line takes the resting pill (the size ladder in
+    /// `RootView.collapsedBodySize` ranks it above the island's resting width), and the
+    /// island still pops out for live activities. Shared by `RootView` (pill width) and
+    /// `CollapsedMediaView` (content) so the two never drift.
+    func tickerActive(pinned: Bool, hasTrack: Bool) -> Bool {
+        pinned && hasTrack && hasSyncedLyrics
     }
 
     /// The lyric to show on the collapsed ticker at `position`: the most recent *sung*

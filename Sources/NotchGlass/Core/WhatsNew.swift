@@ -34,6 +34,17 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.08.9",
+            summary: "Lyrics on the closed notch now work with Dynamic Island.",
+            changes: [
+                ReleaseChange(
+                    symbol: "quote.bubble.fill",
+                    title: "Pinned lyrics + Dynamic Island",
+                    detail: "Pinned lyrics now ride on the closed notch even when Dynamic Island is on — the current line takes the resting pill, and the island still pops out for live activities. Before, turning on Dynamic Island quietly hid the lyric line."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.08.8",
             summary: "Shrink the notch away, plus a right-click menu.",
             changes: [

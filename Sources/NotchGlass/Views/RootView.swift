@@ -22,7 +22,7 @@ struct RootView: View {
     /// Whether the collapsed pill should widen into a "lyrics ticker" — the pin is on
     /// and the current track actually has synced lyrics to show.
     private var lyricTickerActive: Bool {
-        lyrics.tickerActive(pinned: settings.pinLyrics, hasTrack: np.hasTrack, dynamicIsland: settings.dynamicIsland)
+        lyrics.tickerActive(pinned: settings.pinLyrics, hasTrack: np.hasTrack)
     }
 
     /// The line currently shown on the ticker (title as a fallback only before the

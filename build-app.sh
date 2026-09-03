@@ -43,8 +43,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIconFile</key>        <string>AppIcon</string>
     <key>CFBundleIconName</key>        <string>AppIcon</string>
     <key>CFBundlePackageType</key>     <string>APPL</string>
-    <key>CFBundleShortVersionString</key> <string>1.26.08.8</string>
-    <key>CFBundleVersion</key>         <string>11</string>
+    <key>CFBundleShortVersionString</key> <string>1.26.08.9</string>
+    <key>CFBundleVersion</key>         <string>12</string>
     <key>LSMinimumSystemVersion</key>  <string>26.0</string>
     <key>LSUIElement</key>             <true/>
     <key>NSAppleEventsUsageDescription</key>
