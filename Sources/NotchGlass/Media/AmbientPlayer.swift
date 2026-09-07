@@ -128,10 +128,16 @@ final class AmbientPlayer {
     /// Decode `resource` (capped to `maxLoopSeconds`), match it to `target`, and crossfade
     /// it into a seamless loop.
     private static func loadSeamlessLoop(resource: String, target: AVAudioFormat) -> AVAudioPCMBuffer? {
+        // Load from the app's own Resources (Contents/Resources/ambience) via
+        // `Bundle.main`. We deliberately do NOT use `Bundle.module`: for a SwiftPM
+        // executable its generated accessor looks for the resource bundle next to the
+        // binary and otherwise `fatalError`s — inside a packaged .app it never resolves
+        // and only "worked" on the dev machine by falling back to a hardcoded build
+        // path, crashing everywhere else. See `build-app.sh` (copies `ambience/` here).
         // Accept any bundled audio container (some loops are pre-trimmed AAC `.m4a`).
         let exts = ["m4a", "mp3", "caf"]
         guard let url = exts.lazy.compactMap({ ext in
-            Bundle.module.url(forResource: resource, withExtension: ext, subdirectory: "ambience")
+            Bundle.main.url(forResource: resource, withExtension: ext, subdirectory: "ambience")
         }).first else {
             NSLog("AmbientPlayer: missing resource \(resource).(m4a|mp3|caf)"); return nil
         }

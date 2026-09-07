@@ -34,6 +34,17 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.09.1",
+            summary: "The Ambient crash is finally, actually fixed.",
+            changes: [
+                ReleaseChange(
+                    symbol: "cloud.rain.fill",
+                    title: "Ambient crash fixed for real",
+                    detail: "The true cause: the app looked for its ambient sound files in the wrong place inside the app bundle, so on any Mac other than the one it was built on, opening an Ambient sound crashed instantly. The audio now ships where the app actually looks, so every soundscape plays everywhere."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.09",
             summary: "Your Messages in the notch — and a big stability fix.",
             changes: [

@@ -20,15 +20,17 @@ cp "$BIN_PATH" "$APP/Contents/MacOS/NotchGlass"
 mkdir -p "$APP/Contents/Resources"
 cp "icon/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
-# Bundle SwiftPM resources (ambient audio) so `Bundle.module` resolves inside the
-# .app. SwiftPM emits `NotchGlass_NotchGlass.bundle` next to the built binary.
-BIN_DIR="$(dirname "$BIN_PATH")"
-RES_BUNDLE="$BIN_DIR/NotchGlass_NotchGlass.bundle"
-if [ -d "$RES_BUNDLE" ]; then
-    mkdir -p "$APP/Contents/Resources"
-    cp -R "$RES_BUNDLE" "$APP/Contents/Resources/"
+# Bundle the ambient audio into Contents/Resources/ambience so it loads via
+# `Bundle.main` inside the .app (see AmbientPlayer.loadSeamlessLoop). We do NOT ship
+# SwiftPM's `NotchGlass_NotchGlass.bundle` / rely on `Bundle.module`: its generated
+# accessor looks next to the binary and hard-fails inside an .app, which crashed the
+# app on any machine without the dev build tree.
+AMBIENCE_SRC="Sources/NotchGlass/Resources/ambience"
+if [ -d "$AMBIENCE_SRC" ]; then
+    mkdir -p "$APP/Contents/Resources/ambience"
+    cp -R "$AMBIENCE_SRC/." "$APP/Contents/Resources/ambience/"
 else
-    echo "⚠︎ resource bundle not found at $RES_BUNDLE" >&2
+    echo "⚠︎ ambience resources not found at $AMBIENCE_SRC" >&2
 fi
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -43,8 +45,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIconFile</key>        <string>AppIcon</string>
     <key>CFBundleIconName</key>        <string>AppIcon</string>
     <key>CFBundlePackageType</key>     <string>APPL</string>
-    <key>CFBundleShortVersionString</key> <string>1.26.09</string>
-    <key>CFBundleVersion</key>         <string>13</string>
+    <key>CFBundleShortVersionString</key> <string>1.26.09.1</string>
+    <key>CFBundleVersion</key>         <string>14</string>
     <key>LSMinimumSystemVersion</key>  <string>26.0</string>
     <key>LSUIElement</key>             <true/>
     <key>NSAppleEventsUsageDescription</key>
