@@ -114,6 +114,10 @@ enum Metrics {
     /// `moodExpandedHeight` so the fixed window never has to grow to hold it.
     static let scratchHeight: CGFloat = 420
 
+    /// The Messages tab: a chat list or a thread + reply bar. Matches the Chat tab's
+    /// height so the conversation and input have room without overgrowing the window.
+    static let messagesHeight: CGFloat = 420
+
     /// Slightly taller body for the Record tab. The standard `openHeight` leaves
     /// the Region/Window/Full capture tiles jammed against the bottom panel edge;
     /// a little extra room lets them breathe under the mode switch. Kept well below
@@ -199,6 +203,7 @@ enum Metrics {
         if tab == .now { return nowHeight }
         if tab == .countdown { return countdownHeight }
         if tab == .shortcuts { return shortcutsHeight }
+        if tab == .messages { return messagesHeight }
         return openHeight
     }
 

@@ -34,6 +34,27 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.09",
+            summary: "Your Messages in the notch — and a big stability fix.",
+            changes: [
+                ReleaseChange(
+                    symbol: "message.fill",
+                    title: "Messages tab",
+                    detail: "Read your recent iMessage/SMS conversations and reply inline, right from the notch. Names come from your Contacts. Add it from the “+” — it needs Full Disk Access to read your messages and Contacts access to show names, both granted once."
+                ),
+                ReleaseChange(
+                    symbol: "cloud.rain.fill",
+                    title: "Ambient no longer crashes",
+                    detail: "Fixed for real this time: choosing an Ambient sound could crash the app on some Macs (especially MacBooks) because of how the audio engine reports errors. Every soundscape now starts safely — or stays quiet — instead of taking the app down."
+                ),
+                ReleaseChange(
+                    symbol: "quote.bubble.fill",
+                    title: "Cleaner lyrics",
+                    detail: "Word-by-word synced lyrics no longer show raw timestamps between the words — just the line."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.08.9",
             summary: "Lyrics on the closed notch now work with Dynamic Island.",
             changes: [

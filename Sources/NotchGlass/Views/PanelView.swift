@@ -9,7 +9,7 @@ struct PanelView: View {
     /// that pin their own dark appearance, the Map, the Mood board). On the Light
     /// theme these keep a dark appearance so their white-on-dark content, glass
     /// buttons and materials stay legible rather than washing out on the pale panel.
-    private static let darkTabs: Set<NotchTab> = [.media, .fuel, .clock, .map, .weather, .mood, .calendar, .scratch]
+    private static let darkTabs: Set<NotchTab> = [.media, .fuel, .clock, .map, .weather, .mood, .calendar, .scratch, .messages]
 
     /// The appearance the tab content is pinned to. On Light, panel-native tabs and
     /// Settings go light (dark-on-light, light-frosted glass); the dark-native tabs
@@ -76,6 +76,7 @@ struct PanelView: View {
                         case .now:     NowTabView()
                         case .countdown: CountdownTabView()
                         case .shortcuts: ShortcutsTabView()
+                        case .messages: MessagesTabView()
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

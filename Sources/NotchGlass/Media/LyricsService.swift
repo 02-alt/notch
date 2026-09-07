@@ -255,7 +255,13 @@ final class LyricsService: ObservableObject {
                 rest = rest[rest.index(after: close)...]
             }
             guard !stamps.isEmpty else { continue }   // metadata-only or untimed line
-            let text = rest.trimmingCharacters(in: .whitespaces)
+            // Enhanced-LRC lines carry per-word timestamps inline (`<mm:ss.xx>`); strip
+            // them (and the doubled spaces they leave) so only the words render.
+            let text = String(rest)
+                .replacingOccurrences(of: "<[0-9]{1,2}:[0-9]{2}(\\.[0-9]{1,3})?>",
+                                      with: "", options: .regularExpression)
+                .replacingOccurrences(of: " {2,}", with: " ", options: .regularExpression)
+                .trimmingCharacters(in: .whitespaces)
             for s in stamps { out.append(LyricLine(time: s, text: text)) }
         }
         return out.sorted { $0.time < $1.time }

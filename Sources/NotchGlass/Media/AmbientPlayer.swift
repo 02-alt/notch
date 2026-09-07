@@ -1,5 +1,6 @@
 import AVFoundation
 import QuartzCore
+import ObjCSupport
 
 /// Background ambience — loops a bundled field recording (rain, storm, …) through a
 /// dedicated ``AVAudioEngine``, entirely separate from any other audio, so the chosen
@@ -63,15 +64,28 @@ final class AmbientPlayer {
         fade(to: 0, over: player.isPlaying ? 0.4 : 0) { [weak self] in
             guard let self else { return }
             self.player.stop()
-            guard scene != .off, let buffer = self.buffer(for: scene) else { return }
-            do {
-                if !self.started { try self.engine.start(); self.started = true }
-                self.player.scheduleBuffer(buffer, at: nil, options: [.loops, .interrupts])
-                self.player.play()
-                self.fade(to: volume, over: 0.6)
-            } catch {
-                NSLog("AmbientPlayer: engine start failed: \(error)")
+            guard scene != .off else { return }
+
+            // Decode + start + schedule + play, all inside an Obj-C exception guard.
+            // AVAudioEngine raises Obj-C exceptions ("required condition is false: …")
+            // for hardware/format states that vary by machine — a MacBook's built-in
+            // output differs from a Mac mini's — and those *cannot* be caught by Swift's
+            // do/catch, so an unguarded call crashes the whole app. Catching here means a
+            // scene that can't start just stays silent instead of taking the app down.
+            var didStart = false
+            let raised = NGRunCatchingExceptions {
+                guard let buffer = self.buffer(for: scene) else { return }
+                do {
+                    if !self.started { try self.engine.start(); self.started = true }
+                    self.player.scheduleBuffer(buffer, at: nil, options: [.loops, .interrupts])
+                    self.player.play()
+                    didStart = true
+                } catch {
+                    NSLog("AmbientPlayer: engine start failed: \(error)")
+                }
             }
+            if let raised { NSLog("AmbientPlayer: audio path raised \(raised.localizedDescription)") }
+            if didStart { self.fade(to: volume, over: 0.6) }
         }
     }
 

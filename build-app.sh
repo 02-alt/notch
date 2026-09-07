@@ -43,8 +43,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIconFile</key>        <string>AppIcon</string>
     <key>CFBundleIconName</key>        <string>AppIcon</string>
     <key>CFBundlePackageType</key>     <string>APPL</string>
-    <key>CFBundleShortVersionString</key> <string>1.26.08.9</string>
-    <key>CFBundleVersion</key>         <string>12</string>
+    <key>CFBundleShortVersionString</key> <string>1.26.09</string>
+    <key>CFBundleVersion</key>         <string>13</string>
     <key>LSMinimumSystemVersion</key>  <string>26.0</string>
     <key>LSUIElement</key>             <true/>
     <key>NSAppleEventsUsageDescription</key>
@@ -55,6 +55,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <string>NotchGlass shows your upcoming events on the Calendar tab.</string>
     <key>NSCalendarsUsageDescription</key>
     <string>NotchGlass shows your upcoming events on the Calendar tab.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>NotchGlass shows contact names instead of raw phone numbers on the Messages tab.</string>
     <!-- The Chat tab can talk to a local AI server (e.g. LM Studio at
          http://localhost:1234). App Transport Security blocks plain HTTP by
          default; this exception permits loopback/`.local` connections only. -->

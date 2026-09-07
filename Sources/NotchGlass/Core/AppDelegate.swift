@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let fuelEvents = FuelEventMonitor()
     private let batteryMonitor = BatteryMonitor()
     private let cpuMonitor = CPUMonitor()
+    private let messagesStore = MessagesStore()
     private let weatherGlance = WeatherGlanceMonitor()
     private var airDropWatcher: AirDropWatcher?
     private var cancellables = Set<AnyCancellable>()
@@ -259,6 +260,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .environmentObject(fuelEvents)
                 .environmentObject(batteryMonitor)
                 .environmentObject(cpuMonitor)
+                .environmentObject(messagesStore)
                 .ignoresSafeArea()
         )
 

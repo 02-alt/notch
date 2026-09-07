@@ -19,6 +19,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
     case now
     case countdown
     case shortcuts
+    case messages
 
     var id: String { rawValue }
 
@@ -46,6 +47,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .now:     return "gauge.high"
         case .countdown: return "hourglass"
         case .shortcuts: return "bolt.fill"
+        case .messages: return "message.fill"
         }
     }
 
@@ -68,6 +70,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .now:     return "System"
         case .countdown: return "Countdown"
         case .shortcuts: return "Shortcuts"
+        case .messages: return "Messages"
         }
     }
 
@@ -92,6 +95,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .now:      return "Live machine vitals"
         case .countdown: return "Days until a date"
         case .shortcuts: return "One-tap launchers"
+        case .messages: return "Read & reply to iMessage"
         }
     }
 
@@ -117,6 +121,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .now:      return ["cpu", "ram", "memory", "network", "monitor", "activity", "stats", "pulse", "system"]
         case .countdown: return ["countdown", "date", "event", "until", "days", "deadline", "trip"]
         case .shortcuts: return ["launch", "run", "script", "command", "automation", "shortcut", "app"]
+        case .messages: return ["imessage", "texts", "sms", "chat", "reply", "conversations", "inbox"]
         }
     }
 
@@ -135,7 +140,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
     var category: Category {
         switch self {
         case .media, .ambient:            return .media
-        case .drop, .website, .note, .scratch, .fuel, .record, .deck, .shortcuts: return .tools
+        case .drop, .website, .note, .scratch, .fuel, .record, .deck, .shortcuts, .messages: return .tools
         case .mood, .map, .weather, .clock, .calendar, .now, .countdown: return .glance
         }
     }
