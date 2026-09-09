@@ -419,6 +419,10 @@ final class NowPlayingManager: ObservableObject {
         let artworkExpr = (source == .spotify || source == .yoin || source == .reed)
             ? #"& linefeed & (artwork url of current track)"#
             : ""
+        // Reed (podcasts) also exposes `chapters` as sec::title;;… on the current track.
+        let chaptersExpr = (source == .reed)
+            ? #"& linefeed & (chapters of current track)"#
+            : ""
 
         let script = """
         tell application "\(source.rawValue)"
@@ -430,7 +434,7 @@ final class NowPlayingManager: ObservableObject {
             set trackPos to player position
             set playState to (player state as text)
             set trackVol to sound volume
-            return trackName & linefeed & trackArtist & linefeed & trackAlbum & linefeed & (trackDur as text) & linefeed & (trackPos as text) & linefeed & playState & linefeed & (trackVol as text) \(artworkExpr)
+            return trackName & linefeed & trackArtist & linefeed & trackAlbum & linefeed & (trackDur as text) & linefeed & (trackPos as text) & linefeed & playState & linefeed & (trackVol as text) \(artworkExpr) \(chaptersExpr)
         end tell
         """
 
@@ -445,8 +449,10 @@ final class NowPlayingManager: ObservableObject {
             duration: Self.parseSeconds(parts[3]),
             position: Self.parseSeconds(parts[4]),
             playing: parts[5].lowercased().contains("playing"),
-            // Volume is a 0–100 app property; artwork URL (Spotify / Yoin only) trails it.
+            // Volume is a 0–100 app property; artwork URL (Spotify / Yoin / Reed) is the
+            // 8th line when present, and Reed's chapters (sec::title;;…) the 9th.
             artworkURL: parts.count >= 8 ? parts[7] : nil,
+            chapters: parts.count >= 9 ? Self.parseChapters(parts[8]) : [],
             volume: parts.count >= 7 ? Self.parseSeconds(parts[6]) / 100 : nil
         )
     }
