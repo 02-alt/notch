@@ -415,8 +415,8 @@ final class NowPlayingManager: ObservableObject {
         let durationExpr = source == .spotify
             ? "(duration of current track) / 1000"
             : "duration of current track"
-        // Spotify and Yoin both expose an HTTP `artwork url` on the current track.
-        let artworkExpr = (source == .spotify || source == .yoin)
+        // Spotify, Yoin and Reed all expose an HTTP `artwork url` on the current track.
+        let artworkExpr = (source == .spotify || source == .yoin || source == .reed)
             ? #"& linefeed & (artwork url of current track)"#
             : ""
 
