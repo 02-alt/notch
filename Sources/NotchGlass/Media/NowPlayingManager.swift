@@ -359,17 +359,27 @@ final class NowPlayingManager: ObservableObject {
         }
 
         // Pick the best source: a playing one wins; the preferred app breaks ties;
-        // native apps edge out browsers; otherwise anything with a track.
+        // native apps edge out browsers; the currently-shown source gets a small
+        // stickiness bonus; otherwise anything with a track.
         let preferred = SettingsStore.shared.mediaPriority
+        let current = source
         func rank(_ source: MediaSource) -> Int {
             var r = 0
             if states[source]?.playing == true { r -= 100 }
             if source == preferred { r -= 10 }
+            // Stickiness: once a source is on screen, keep it unless another is a
+            // *clearly* better pick (e.g. it's playing while this one paused). Without
+            // this, two equally-ranked sources (say two browser tabs both playing) flip
+            // the panel — and its cover — back and forth every poll.
+            if source == current { r -= 5 }
             if !source.isBrowser { r -= 1 }
             return r
         }
 
-        if let best = states.keys.min(by: { rank($0) < rank($1) }), let info = states[best] {
+        // Rank over the fixed `allCases` order (not the unordered dictionary keys) so a
+        // genuine tie always resolves to the same source instead of oscillating.
+        let candidates = MediaSource.allCases.filter { states[$0] != nil }
+        if let best = candidates.min(by: { rank($0) < rank($1) }), let info = states[best] {
             apply(info, from: best)
         } else {
             clear()
