@@ -75,6 +75,13 @@ final class SettingsStore: ObservableObject {
     @Published var collapsedShowsFuelEvents: Bool {
         didSet { defaults.set(collapsedShowsFuelEvents, forKey: "set.collapsedShowsFuelEvents") }
     }
+    /// Twitch chat peek: when on and you're signed into Twitch, chat highlights — a line
+    /// that @-mentions you, a cheer, or a sub/raid — briefly flash on the closed notch.
+    /// Keeps a chat socket alive in the background (independent of the Twitch tab being
+    /// open), so it's opt-in.
+    @Published var collapsedShowsTwitchChat: Bool {
+        didSet { defaults.set(collapsedShowsTwitchChat, forKey: "set.collapsedShowsTwitchChat") }
+    }
 
     /// Dynamic Island mode: the closed notch auto-expands *on its own* when a live
     /// activity starts (a new track, a timer, an AirDrop) — briefly morphing into a
@@ -135,11 +142,6 @@ final class SettingsStore: ObservableObject {
     func removeTab(_ tab: NotchTab) {
         guard enabledTabs.count > 1 else { return }
         enabledTabs.removeAll { $0 == tab }
-    }
-
-    /// Which AI the Fuel tab shows usage for. Switched from the tab's header picker.
-    @Published var fuelProvider: AIProvider {
-        didSet { defaults.set(fuelProvider.rawValue, forKey: "set.fuelProvider") }
     }
 
     /// How often the Fuel tab re-reads live usage while it's open. `FuelManager`
@@ -255,6 +257,7 @@ final class SettingsStore: ObservableObject {
         pinLyrics = defaults.object(forKey: "set.pinLyrics") as? Bool ?? false
         collapsedShowsMedia = defaults.object(forKey: "set.collapsedShowsMedia") as? Bool ?? true
         collapsedShowsFuelEvents = defaults.object(forKey: "set.collapsedShowsFuelEvents") as? Bool ?? false
+        collapsedShowsTwitchChat = defaults.object(forKey: "set.collapsedShowsTwitchChat") as? Bool ?? false
         dynamicIsland = defaults.object(forKey: "set.dynamicIsland") as? Bool ?? false
         minimalNotch = defaults.object(forKey: "set.minimalNotch") as? Bool ?? false
         collapsedResting = CollapsedResting(rawValue: defaults.string(forKey: "set.collapsedResting") ?? "") ?? .none
@@ -266,7 +269,6 @@ final class SettingsStore: ObservableObject {
         } else {
             enabledTabs = NotchTab.defaultTabs
         }
-        fuelProvider = AIProvider(rawValue: defaults.string(forKey: "set.fuelProvider") ?? "") ?? .claude
         fuelRefreshRate = FuelRefreshRate(rawValue: defaults.string(forKey: "set.fuelRefreshRate") ?? "") ?? .normal
         if let raw = defaults.array(forKey: "set.fuelLayout") as? [String] {
             let blocks = raw.compactMap { FuelBlock(rawValue: $0) }

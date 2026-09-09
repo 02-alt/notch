@@ -19,6 +19,13 @@ struct RootView: View {
     @EnvironmentObject private var np: NowPlayingManager
     @EnvironmentObject private var lyrics: LyricsService
 
+    /// Shared namespace for the album-art hero morph: the collapsed pill's cover and
+    /// the open Media tab's cover carry the same `matchedGeometryEffect` id, so the art
+    /// glides between the two as the notch opens/closes instead of cross-fading. Passed
+    /// down through the environment (see `\.heroNamespace`) so both ends can read it
+    /// without threading it through PanelView's layers.
+    @Namespace private var heroNamespace
+
     /// Whether the collapsed pill should widen into a "lyrics ticker" — the pin is on
     /// and the current track actually has synced lyrics to show.
     private var lyricTickerActive: Bool {
@@ -33,28 +40,48 @@ struct RootView: View {
         lyricTickerActive ? (lyrics.currentLine(at: np.position) ?? np.title) : nil
     }
 
-    /// The collapsed pill width when showing the pinned lyric line — sized to *fit* the
-    /// current line (so it isn't truncated), then clamped so a very long line can't run
-    /// the pill off-screen. `CollapsedMediaView` fills this width with the line.
-    private var lyricTickerWidth: CGFloat {
+    /// Shared collapsed-pill geometry for the text-fitting peeks (lyric ticker, event
+    /// banner). Returns the album/glyph tile size, the horizontal inset, the *rendered*
+    /// width of `text` at the pill's label font (measured — proportional fonts vary too
+    /// much to estimate by character count, and rounded up since SwiftUI's Text renders a
+    /// hair wider), and the window-clamped max width. Callers add their own trailing
+    /// elements to form `needed`.
+    private func pillTextMetrics(_ text: String, fontScale: CGFloat)
+        -> (art: CGFloat, hInset: CGFloat, textWidth: CGFloat, maxWidth: CGFloat) {
         let base = vm.collapsedSize
         let vInset = max(4, base.height * 0.15)
         let art = max(0, base.height - vInset * 2)
         let hInset = max(12, base.height * 0.42)
-        let fontSize = art * 0.42
-        // Measure the line's *actual* rendered width (proportional fonts vary too much
-        // to estimate by character count) so the pill is sized to fit exactly, then add
-        // the album-art tile + the surrounding insets, with a little slack.
-        let font = NSFont.systemFont(ofSize: fontSize, weight: .semibold)
-        let textWidth = ((lyricTickerLine ?? "") as NSString)
-            .size(withAttributes: [.font: font]).width
-        // Round up + generous slack: SwiftUI's Text renders a hair wider than this
-        // measurement, so a tight fit clips the last word on long lines.
-        let needed = art + hInset * 3 + textWidth.rounded(.up) + 24
-        // Grow as far as the hosting window allows (it's the wide Mood-canvas width),
-        // leaving a small margin so the pill never touches the window edge.
+        let font = NSFont.systemFont(ofSize: art * fontScale, weight: .semibold)
+        let textWidth = (text as NSString).size(withAttributes: [.font: font]).width.rounded(.up)
+        // Grow as far as the hosting window allows, leaving a small margin so the pill
+        // never touches the window edge.
         let maxWidth = Metrics.windowContentWidth(panelWidth: openWidth) - 24
-        return min(max(base.width, needed), maxWidth)
+        return (art, hInset, textWidth, maxWidth)
+    }
+
+    /// The collapsed pill width when showing the pinned lyric line — sized to *fit* the
+    /// current line (so it isn't truncated), then clamped so a very long line can't run
+    /// the pill off-screen. `CollapsedMediaView` fills this width with the line.
+    private var lyricTickerWidth: CGFloat {
+        let m = pillTextMetrics(lyricTickerLine ?? "", fontScale: 0.42)
+        let needed = m.art + m.hInset * 3 + m.textWidth + 24
+        return min(max(vm.collapsedSize.width, needed), m.maxWidth)
+    }
+
+    /// The collapsed pill width for a flashing notice: the short fuel-style banner by
+    /// default, but grown to fit a longer line (e.g. a Twitch chat message) so it isn't
+    /// clipped — clamped to the window so a firehose line can't run the pill off-screen.
+    /// The label itself truncates once the line is longer than this clamped width.
+    private func eventBannerWidth(_ event: NotchViewModel.CollapsedEvent) -> CGFloat {
+        let floor = max(vm.collapsedSize.width + 168, 320)
+        // Refill peeks own their layout (the dot-matrix charge display), so keep the
+        // fixed short banner for them.
+        guard event.kind == .generic else { return floor }
+        let m = pillTextMetrics(event.text, fontScale: 0.44)
+        // glyph tile + label + the pulse dot + insets, with slack.
+        let needed = m.art + m.textWidth + m.art * 0.5 + m.hInset * 3 + 32
+        return min(max(floor, needed), m.maxWidth)
     }
 
     /// True while a drag session is hovering the notch body.
@@ -93,8 +120,8 @@ struct RootView: View {
         if vm.islandActivity != nil {
             return CGSize(width: max(base.width + 220, 360), height: base.height + 18)
         }
-        if vm.collapsedEvent != nil {
-            return CGSize(width: max(base.width + 168, 320), height: base.height + 12)
+        if let event = vm.collapsedEvent {
+            return CGSize(width: eventBannerWidth(event), height: base.height + 12)
         }
         // Pinned lyrics: widen into a ticker sized to fit the current line beside the
         // album art, without touching the bare-notch height. An explicit "show this",
@@ -393,6 +420,7 @@ struct RootView: View {
         .frame(width: frameWidth,
                height: Metrics.windowContentHeight + Metrics.openTopGap + Metrics.islandFloatGap,
                alignment: .top)
+        .environment(\.heroNamespace, heroNamespace)
         // One animation drives the whole morph — frame, corner radius, surface,
         // stroke, shadow and the content reveal all move together.
         .animation(vm.isOpen ? Metrics.openSpring : Metrics.closeSpring, value: vm.isOpen)
@@ -724,5 +752,19 @@ private struct NotchUnfoldModifier: ViewModifier {
             // Clamp: a bouncy spring can drive progress past 1, and a negative
             // blur radius is undefined.
             .blur(radius: max(0, (1 - progress) * 8))
+    }
+}
+
+/// Carries the album-art hero-morph namespace (see `RootView.heroNamespace`) down to
+/// the collapsed pill and the open Media tab, which are too far apart in the tree to
+/// share a `@Namespace` any other way. Nil when no morph namespace is in scope.
+private struct HeroNamespaceKey: EnvironmentKey {
+    static let defaultValue: Namespace.ID? = nil
+}
+
+extension EnvironmentValues {
+    var heroNamespace: Namespace.ID? {
+        get { self[HeroNamespaceKey.self] }
+        set { self[HeroNamespaceKey.self] = newValue }
     }
 }

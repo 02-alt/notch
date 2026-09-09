@@ -76,7 +76,13 @@ struct AddTabGalleryHost: View {
                         onHoverChange: { onCard in
                             if onCard { hasEnteredCard = true; cancelLeave(); vm.keepOpen() }
                         },
-                        onPick: { gallery.dismiss() }
+                        // Picking a tab dismisses the gallery *and* holds the panel
+                        // open on that tab — without keepOpen the overlay-dismiss
+                        // safety net (see NotchViewModel.observeOverlays) reads the
+                        // pointer as off-panel and collapses the notch right after the
+                        // pick. keepOpen runs after dismiss so it cancels that pending
+                        // close.
+                        onPick: { gallery.dismiss(); vm.keepOpen() }
                     )
                     .frame(width: cardWidth)
                     .offset(x: clampedX(in: geo.size), y: clampedY(in: geo.size))

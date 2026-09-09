@@ -155,6 +155,13 @@ struct SkyModel: Equatable {
     let lastLight: Date?      // civil dusk (sun at −6° after sunset)
     let dayLength: TimeInterval?
 
+    // Golden-hour windows: sun between −4° and +6° (the classic warm-light band),
+    // rising in the morning and descending in the evening.
+    let goldenAMStart: Date?  // morning: sun rising through −4°
+    let goldenAMEnd: Date?    // morning: sun rising through +6°
+    let goldenPMStart: Date?  // evening: sun descending through +6° (== goldenHour)
+    let goldenPMEnd: Date?    // evening: sun descending through −4°
+
     let moonSamples: [AltSample]
     let moonNowAlt: Double
     let moonrise: Date?
@@ -182,6 +189,9 @@ struct SkyModel: Equatable {
         let noon    = sun.max(by: { $0.alt < $1.alt })?.t
         let golden  = Self.crossing(sun, level: 6,  rising: false, after: noon)
         let dusk    = Self.crossing(sun, level: -6, rising: false, after: sunset)
+        let goldenAMStart = Self.crossing(sun, level: -4, rising: true)
+        let goldenAMEnd   = Self.crossing(sun, level: 6,  rising: true)
+        let goldenPMEnd   = Self.crossing(sun, level: -4, rising: false, after: golden)
         let dayLen: TimeInterval? = (sunrise != nil && sunset != nil)
             ? sunset!.timeIntervalSince(sunrise!) : nil
 
@@ -195,6 +205,8 @@ struct SkyModel: Equatable {
             sunNowAlt: Astronomy.sunAltitude(now, latitude: latitude, longitude: longitude),
             sunrise: sunrise, sunset: sunset, solarNoon: noon,
             goldenHour: golden, lastLight: dusk, dayLength: dayLen,
+            goldenAMStart: goldenAMStart, goldenAMEnd: goldenAMEnd,
+            goldenPMStart: golden, goldenPMEnd: goldenPMEnd,
             moonSamples: moon,
             moonNowAlt: Astronomy.moonAltitude(now, latitude: latitude, longitude: longitude),
             moonrise: moonrise, moonset: moonset,
@@ -390,34 +402,77 @@ struct SunArcCard: View {
 
 // MARK: - Golden hour card
 
-/// A compact elevation sparkline with the golden-hour band lit in a gold→violet
-/// wash and a dot at the current moment. The big number is the evening golden hour.
+/// The day's two golden-hour windows (morning and evening) shown the way
+/// photography apps do: each as a labelled time range with a gold bar sized to its
+/// duration, the currently-active or next-up window lit and the others dimmed. The
+/// hero number is the focus window's start; a live pill counts down to (or through)
+/// it. Clearer than plotting the band on an altitude curve, which reads as a
+/// disconnected stub near the horizon.
 struct GoldenHourCard: View {
     let model: SkyModel
 
+    private struct Window: Identifiable {
+        let id: String
+        let name: String
+        let symbol: String
+        let start: Date?
+        let end: Date?
+        var duration: TimeInterval? {
+            guard let s = start, let e = end else { return nil }
+            return max(0, e.timeIntervalSince(s))
+        }
+    }
+
+    private var windows: [Window] {
+        [Window(id: "am", name: "Morning", symbol: "sunrise.fill",
+                start: model.goldenAMStart, end: model.goldenAMEnd),
+         Window(id: "pm", name: "Evening", symbol: "sunset.fill",
+                start: model.goldenPMStart, end: model.goldenPMEnd)]
+    }
+
+    /// The window happening right now, if any.
+    private var active: Window? {
+        windows.first { w in
+            guard let s = w.start, let e = w.end else { return false }
+            return model.now >= s && model.now <= e
+        }
+    }
+
+    /// The next window still to come today.
+    private var upcoming: Window? {
+        windows
+            .filter { ($0.start ?? .distantPast) > model.now }
+            .min { ($0.start ?? .distantFuture) < ($1.start ?? .distantFuture) }
+    }
+
+    private var focus: Window? { active ?? upcoming ?? windows.last { $0.start != nil } }
+
+    private let gold = Color(red: 1.0, green: 0.80, blue: 0.42)
+
+    private var goldGradient: LinearGradient {
+        LinearGradient(colors: [Color(red: 1.0, green: 0.82, blue: 0.40),
+                                Color(red: 0.86, green: 0.52, blue: 0.78)],
+                       startPoint: .leading, endPoint: .trailing)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.s) {
+        VStack(alignment: .leading, spacing: Spacing.base) {
             HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
-                Text(model.goldenHour?.formatted(date: .omitted, time: .shortened) ?? "—")
-                    .font(.system(size: 20, weight: .bold))
+                Text(focus?.start?.formatted(date: .omitted, time: .shortened) ?? "—")
+                    .font(.system(size: 22, weight: .bold).monospacedDigit())
                 Text("GOLDEN HOUR")
                     .font(.system(size: 9, weight: .bold)).kerning(0.6)
                     .foregroundStyle(Theme.secondaryText)
                 Spacer(minLength: 0)
+                statusPill
             }
-            GeometryReader { geo in
-                let map = ArcMap(samples: model.sunSamples, dayStart: model.dayStart,
-                                 size: geo.size, horizonFraction: 0.72)
-                ZStack(alignment: .topLeading) {
-                    Canvas { ctx, size in draw(ctx, size: size, map: map) }
-                    let p = map.point(model.now, model.sunNowAlt)
-                    Circle()
-                        .fill(Color(red: 1.0, green: 0.78, blue: 0.45))
-                        .frame(width: 8, height: 8)
-                        .shadow(color: Color(red: 1.0, green: 0.6, blue: 0.3).opacity(0.9), radius: 5)
-                        .position(p)
+
+            VStack(alignment: .leading, spacing: Spacing.s) {
+                ForEach(windows) { w in
+                    windowRow(w, lit: focus?.id == w.id)
                 }
             }
+            Spacer(minLength: 0)
         }
         .padding(Spacing.base)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -433,35 +488,65 @@ struct GoldenHourCard: View {
         }
     }
 
-    private func draw(_ ctx: GraphicsContext, size: CGSize, map: ArcMap) {
-        var line = Path()
-        for (i, s) in model.sunSamples.enumerated() {
-            let pt = map.point(s.t, s.alt)
-            if i == 0 { line.move(to: pt) } else { line.addLine(to: pt) }
+    @ViewBuilder
+    private var statusPill: some View {
+        if let a = active, let end = a.end {
+            pill("ENDS IN " + Self.short(end.timeIntervalSince(model.now)), filled: true)
+        } else if let u = upcoming, let start = u.start {
+            pill("IN " + Self.short(start.timeIntervalSince(model.now)), filled: false)
         }
-        ctx.stroke(line, with: .color(.white.opacity(0.35)),
-                   style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
+    }
 
-        // Golden-hour band: the samples whose altitude sits within −4°…+6°.
-        var band = Path()
-        var started = false
-        for s in model.sunSamples where s.alt >= -4 && s.alt <= 6 {
-            let pt = map.point(s.t, s.alt)
-            if started { band.addLine(to: pt) } else { band.move(to: pt); started = true }
+    private func pill(_ text: String, filled: Bool) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .bold)).kerning(0.4)
+            .foregroundStyle(filled ? Color.black.opacity(0.85) : gold)
+            .padding(.horizontal, Spacing.sm).padding(.vertical, 3)
+            .background {
+                Capsule().fill(filled ? AnyShapeStyle(gold)
+                                      : AnyShapeStyle(gold.opacity(0.16)))
+            }
+    }
+
+    private func windowRow(_ w: Window, lit: Bool) -> some View {
+        HStack(spacing: Spacing.s) {
+            Image(systemName: w.symbol)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(lit ? gold : Theme.secondaryText)
+                .frame(width: 15)
+            Text(w.name)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.secondaryText)
+                .frame(width: 54, alignment: .leading)
+            Text(Self.range(w.start, w.end))
+                .font(.system(size: 12, weight: .bold).monospacedDigit())
+                .foregroundStyle(lit ? .white : Theme.tertiaryText)
+            Spacer(minLength: Spacing.s)
+            Capsule()
+                .fill(goldGradient)
+                .frame(width: Self.barWidth(w.duration), height: 4)
+                .opacity(lit ? 1 : 0.3)
         }
-        ctx.stroke(band, with: .linearGradient(
-            Gradient(colors: [Color(red: 1.0, green: 0.80, blue: 0.40),
-                              Color(red: 0.75, green: 0.45, blue: 0.85)]),
-            startPoint: CGPoint(x: 0, y: 0),
-            endPoint: CGPoint(x: size.width, y: size.height)),
-            style: StrokeStyle(lineWidth: 3, lineCap: .round))
+        .opacity(w.start == nil ? 0.4 : 1)
+    }
 
-        // Horizon hairline.
-        var hz = Path()
-        hz.move(to: CGPoint(x: 0, y: map.horizonY))
-        hz.addLine(to: CGPoint(x: size.width, y: map.horizonY))
-        ctx.stroke(hz, with: .color(.white.opacity(0.14)),
-                   style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+    /// "6:42 – 7:18".
+    private static func range(_ start: Date?, _ end: Date?) -> String {
+        func f(_ d: Date?) -> String { d?.formatted(date: .omitted, time: .shortened) ?? "—" }
+        return "\(f(start)) – \(f(end))"
+    }
+
+    /// "2h 14m" or "34m".
+    private static func short(_ t: TimeInterval) -> String {
+        let m = max(0, Int(t / 60))
+        return m >= 60 ? "\(m / 60)h \(m % 60)m" : "\(m)m"
+    }
+
+    /// Bar length ∝ window duration, ~30–70 min mapped onto a small fixed range.
+    private static func barWidth(_ duration: TimeInterval?) -> CGFloat {
+        guard let d = duration else { return 0 }
+        let m = d / 60
+        return CGFloat(min(max(m / 70, 0.25), 1)) * 46
     }
 }
 

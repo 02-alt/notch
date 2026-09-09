@@ -118,6 +118,10 @@ enum Metrics {
     /// height so the conversation and input have room without overgrowing the window.
     static let messagesHeight: CGFloat = 420
 
+    /// The Twitch tab: the title/category editor plus a live chat feed and send bar —
+    /// tall so chat has room under the editor.
+    static let twitchHeight: CGFloat = 460
+
     /// Slightly taller body for the Record tab. The standard `openHeight` leaves
     /// the Region/Window/Full capture tiles jammed against the bottom panel edge;
     /// a little extra room lets them breathe under the mode switch. Kept well below
@@ -148,6 +152,12 @@ enum Metrics {
     /// Taller body for the Shortcuts tab: a grid of launch tiles plus the inline
     /// "new shortcut" editor. Kept below `moodExpandedHeight`.
     static let shortcutsHeight: CGFloat = 388
+
+    /// Body height for the Space tab, which is a single full-bleed live world map.
+    /// Sized so the map area (body minus the ~88pt of chrome: TopBar + insets + stack
+    /// gap) is roughly 2:1 against the default content width, so the whole globe shows
+    /// with only a sliver of polar crop. Kept below `moodExpandedHeight`.
+    static let spaceHeight: CGFloat = 400
 
     /// The "bigger notch" the Mood board grows into when expanded (not a real
     /// fullscreen — just a much larger floating canvas).
@@ -204,6 +214,8 @@ enum Metrics {
         if tab == .countdown { return countdownHeight }
         if tab == .shortcuts { return shortcutsHeight }
         if tab == .messages { return messagesHeight }
+        if tab == .twitch { return twitchHeight }
+        if tab == .space { return spaceHeight }
         return openHeight
     }
 

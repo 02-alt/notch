@@ -266,6 +266,11 @@ struct NotchSettingsView: View {
                 NotchToggle(isOn: $settings.collapsedShowsFuelEvents, accent: settings.accent,
                             label: "Fuel events")
             }
+            SettingRow("Twitch highlights", icon: "dot.radiowaves.left.and.right",
+                       caption: "When you're signed into Twitch, chat highlights — mentions of you, cheers, subs and raids — briefly flash on the closed notch. Keeps a chat connection open in the background.") {
+                NotchToggle(isOn: $settings.collapsedShowsTwitchChat, accent: settings.accent,
+                            label: "Twitch chat peek")
+            }
             SettingRow("Dynamic Island", icon: "capsule.fill",
                        caption: "The closed notch expands on its own when something happens — a new track, a finished timer, an incoming AirDrop — showing it for a moment, then settling back. iPhone-style.") {
                 NotchToggle(isOn: $settings.dynamicIsland, accent: settings.accent,

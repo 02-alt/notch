@@ -336,7 +336,18 @@ final class NotchViewModel: ObservableObject {
                 .dropFirst()
                 .removeDuplicates()
                 .filter { !$0 }
-                .sink { [weak self] _ in self?.scheduleClose() }
+                .sink { [weak self] _ in
+                    guard let self else { return }
+                    // If the pointer is still on the panel (e.g. you just removed a tab
+                    // from the strip), stay open; the phantom-leave that fired while the
+                    // overlay was up already left no pending close to cancel. Only close
+                    // when the pointer has genuinely left the panel.
+                    if self.pointerOverOpenPanel {
+                        self.closeWorkItem?.cancel()
+                    } else {
+                        self.scheduleClose()
+                    }
+                }
                 .store(in: &cancellables)
         }
     }
@@ -633,6 +644,25 @@ final class NotchViewModel: ObservableObject {
         let islandExtra = SettingsStore.shared.dynamicIsland ? Metrics.islandFloatGap + 14 : 0
         let band = max(collapsedSize.height, 1) + Metrics.collapsedTriggerSlack + islandExtra
         return fromTop >= 0 && fromTop <= band
+    }
+
+    /// True when the pointer is within the *open* panel body's on-screen region (top-
+    /// centered on the notch display). Used at overlay-dismiss time to decide whether to
+    /// auto-close — a direct geometry check, rather than trusting a follow-up `.onHover`
+    /// event that a concurrent layout change (e.g. a tab being removed from the strip)
+    /// can swallow, which would collapse the panel out from under the pointer.
+    private var pointerOverOpenPanel: Bool {
+        guard isOpen, let screen = notchScreen else { return false }
+        let width = isBigCanvas ? Metrics.moodExpandedWidth : CGFloat(SettingsStore.shared.panelWidth)
+        let height = isBigCanvas
+            ? Metrics.moodExpandedHeight
+            : Metrics.bodyHeight(for: selectedTab, showingSettings: showSettings,
+                                 showingWhatsNew: showWhatsNew, whatsNewChanges: WhatsNew.visibleChangeCount,
+                                 settingsCategory: settingsCategory, mediaLyrics: SettingsStore.shared.mediaLyrics)
+        let slack: CGFloat = 10   // count the very edge as still on the panel
+        let fromTop = screen.frame.maxY - NSEvent.mouseLocation.y
+        let fromMid = abs(NSEvent.mouseLocation.x - screen.frame.midX)
+        return fromMid <= width / 2 + slack && fromTop >= -slack && fromTop <= height + slack
     }
 
     /// How often the open-tracking poll samples the pointer position while the

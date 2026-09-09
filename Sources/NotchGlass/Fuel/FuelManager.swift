@@ -8,7 +8,6 @@ struct FuelState {
     enum Status { case unknown, live, noToken, unauthorized, rateLimited, offline, serverError }
 
     var status: Status = .unknown
-    var provider: AIProvider = .claude
 
     var sessionUsed: Double = 0            // 0…1 of the 5-hour window used
     var sessionResetsAt: Date?
@@ -53,16 +52,12 @@ struct FuelState {
 
     /// A one-line hint for the non-connected states.
     var hint: String? {
-        let name = provider.title
         switch status {
         case .noToken, .unauthorized:
-            switch provider {
-            case .claude:  return "Sign in to Claude Code (run /login) to see your live fuel."
-            case .chatgpt: return "Sign in to Codex (run codex login) to see your live fuel."
-            }
-        case .offline:      return "Couldn’t reach \(name) — check your connection."
-        case .rateLimited:  return "\(name) is throttling requests — try again shortly."
-        case .serverError:  return "\(name)’s usage endpoint returned an error."
+            return "Sign in to Claude Code (run /login) to see your live fuel."
+        case .offline:      return "Couldn’t reach Claude — check your connection."
+        case .rateLimited:  return "Claude is throttling requests — try again shortly."
+        case .serverError:  return "Claude’s usage endpoint returned an error."
         case .live, .unknown: return nil
         }
     }
@@ -75,9 +70,6 @@ struct FuelState {
 final class FuelManager: ObservableObject {
     @Published private(set) var state = FuelState()
     @Published private(set) var isRefreshing = false
-
-    /// Which AI's fuel we're currently showing. Switched from the Fuel tab header.
-    private(set) var provider: AIProvider = SettingsStore.shared.fuelProvider
 
     private let projectsPath = ("~/.claude/projects" as NSString).expandingTildeInPath
     private let windowHours = 5.0
@@ -117,15 +109,6 @@ final class FuelManager: ObservableObject {
         }
     }
 
-    /// Switch the tab to a different AI. Resets the readout and re-fetches from that
-    /// provider's data source.
-    func select(_ provider: AIProvider) {
-        guard provider != self.provider else { return }
-        self.provider = provider
-        state = FuelState(provider: provider)   // clear stale numbers while we refetch
-        refresh()
-    }
-
     /// Starts / stops the poll (at the user's chosen cadence). Driven by the Fuel tab:
     /// active only while its view is on screen *and* the panel is open, so we never
     /// touch the keychain or the network in the background.
@@ -148,10 +131,7 @@ final class FuelManager: ObservableObject {
         guard !isRefreshing else { return }
         if force { cooldownUntil = nil; consecutiveRateLimits = 0 }
         isRefreshing = true
-        switch provider {
-        case .claude:  refreshClaude()
-        case .chatgpt: refreshChatGPT()
-        }
+        refreshClaude()
     }
 
     // MARK: - Claude (OAuth usage endpoint + local transcripts)
@@ -167,7 +147,7 @@ final class FuelManager: ObservableObject {
             // Fast (~1s) and the real fuel gauge, so it lands first.
             let fetch: LiveFetchResult? = skipLive ? nil : LiveUsageClient.fetchDetailed()
             DispatchQueue.main.async {
-                guard let self, self.provider == .claude else { return }
+                guard let self else { return }
                 var s = self.state
                 // `fetch == nil` means the live call was skipped during cooldown —
                 // keep the current status/data untouched.
@@ -232,53 +212,18 @@ final class FuelManager: ObservableObject {
             let today = entries.filter { cal.isDateInToday($0.date) }.reduce(0) { $0 + $1.tokens }
             DispatchQueue.main.async {
                 guard let self else { return }
-                if self.provider == .claude {
-                    var s = self.state
-                    s.todayTokens = today
-                    s.sessionsToday = sessionsToday
-                    if let b = block, b.isActive {
-                        s.blockTokens = b.used
-                        s.topModel = b.perModel.max { $0.value < $1.value }.map { Self.shortModel($0.key) }
-                    } else {
-                        s.blockTokens = 0
-                        s.topModel = nil
-                    }
-                    self.state = s
+                var s = self.state
+                s.todayTokens = today
+                s.sessionsToday = sessionsToday
+                if let b = block, b.isActive {
+                    s.blockTokens = b.used
+                    s.topModel = b.perModel.max { $0.value < $1.value }.map { Self.shortModel($0.key) }
+                } else {
+                    s.blockTokens = 0
+                    s.topModel = nil
                 }
+                self.state = s
                 self.isRefreshing = false
-                // The user switched providers mid-fetch — service the new one now.
-                if self.provider != .claude { self.refresh() }
-            }
-        }
-    }
-
-    // MARK: - ChatGPT (local Codex/ChatGPT login + session transcripts)
-
-    private func refreshChatGPT() {
-        let hours = windowHours
-        DispatchQueue.global(qos: .utility).async { [weak self] in
-            let since = Calendar.current.startOfDay(for: Date()).addingTimeInterval(-hours * 3600)
-            let snap = CodexUsageReader.load(windowHours: hours, since: since)
-            DispatchQueue.main.async {
-                guard let self else { return }
-                if self.provider == .chatgpt {
-                    var s = FuelState(provider: .chatgpt)
-                    switch snap.status {
-                    case .noAuth: s.status = .noToken
-                    case .noData, .live: s.status = .live
-                    }
-                    s.sessionUsed = snap.sessionUsed ?? 0
-                    s.sessionResetsAt = snap.sessionResetsAt
-                    s.weekUsed = snap.weekUsed
-                    s.weekResetsAt = snap.weekResetsAt
-                    s.blockTokens = snap.blockTokens
-                    s.todayTokens = snap.todayTokens
-                    s.topModel = snap.topModel
-                    s.lastUpdated = Date()
-                    self.state = s
-                }
-                self.isRefreshing = false
-                if self.provider != .chatgpt { self.refresh() }
             }
         }
     }

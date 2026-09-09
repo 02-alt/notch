@@ -10,6 +10,12 @@ struct MediaTabView: View {
     @EnvironmentObject private var np: NowPlayingManager
     @EnvironmentObject private var settings: SettingsStore
     @EnvironmentObject private var lyrics: LyricsService
+    @EnvironmentObject private var vm: NotchViewModel
+
+    /// Album-art hero-morph namespace from `RootView`. This cover is the source while
+    /// the panel is open, so the collapsed pill's art glides into it on open (and back
+    /// out on close). See `CollapsedMediaView.artwork` / `HeroArtMorph`.
+    @Environment(\.heroNamespace) private var heroNamespace
 
     /// Dominant colour pulled from the current artwork; nil until computed / when
     /// there's no art. Drives the scrubber fill and the play-button glow.
@@ -252,6 +258,11 @@ struct MediaTabView: View {
                 .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
         }
         .shadow(color: .black.opacity(0.45), radius: 12, y: 5)
+        // Destination of the album-art hero morph. Source only while the panel is open
+        // (this view persists in the tree even when closed, so an unconditional source
+        // would compete with the collapsed pill's cover and blank it out). When closed
+        // it becomes the non-source and the collapsed cover is the single source.
+        .modifier(HeroArtMorph(namespace: heroNamespace, isSource: vm.isOpen))
     }
 
     /// Replaces the scrubber + time row for live streams: a pulsing red "LIVE" badge

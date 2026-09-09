@@ -20,6 +20,8 @@ enum NotchTab: String, CaseIterable, Identifiable {
     case countdown
     case shortcuts
     case messages
+    case twitch
+    case space
 
     var id: String { rawValue }
 
@@ -48,6 +50,8 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .countdown: return "hourglass"
         case .shortcuts: return "bolt.fill"
         case .messages: return "message.fill"
+        case .twitch: return "antenna.radiowaves.left.and.right"
+        case .space:   return "sparkles"
         }
     }
 
@@ -71,6 +75,8 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .countdown: return "Countdown"
         case .shortcuts: return "Shortcuts"
         case .messages: return "Messages"
+        case .twitch: return "Twitch"
+        case .space:   return "Space"
         }
     }
 
@@ -96,6 +102,8 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .countdown: return "Days until a date"
         case .shortcuts: return "One-tap launchers"
         case .messages: return "Read & reply to iMessage"
+        case .twitch: return "Edit stream & watch chat"
+        case .space:    return "ISS flyovers overhead"
         }
     }
 
@@ -122,6 +130,8 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .countdown: return ["countdown", "date", "event", "until", "days", "deadline", "trip"]
         case .shortcuts: return ["launch", "run", "script", "command", "automation", "shortcut", "app"]
         case .messages: return ["imessage", "texts", "sms", "chat", "reply", "conversations", "inbox"]
+        case .twitch: return ["twitch", "stream", "live", "chat", "broadcast", "category", "title", "streaming"]
+        case .space:    return ["iss", "space", "station", "flyover", "orbit", "sky", "stars"]
         }
     }
 
@@ -140,8 +150,8 @@ enum NotchTab: String, CaseIterable, Identifiable {
     var category: Category {
         switch self {
         case .media, .ambient:            return .media
-        case .drop, .website, .note, .scratch, .fuel, .record, .deck, .shortcuts, .messages: return .tools
-        case .mood, .map, .weather, .clock, .calendar, .now, .countdown: return .glance
+        case .drop, .website, .note, .scratch, .fuel, .record, .deck, .shortcuts, .messages, .twitch: return .tools
+        case .mood, .map, .weather, .clock, .calendar, .now, .countdown, .space: return .glance
         }
     }
 

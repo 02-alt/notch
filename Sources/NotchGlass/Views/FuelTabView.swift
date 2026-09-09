@@ -14,7 +14,6 @@ struct FuelTabView: View {
 
     /// Window-space frames of the header picker and the "+" add-block tile, so their
     /// menus drop from just below them.
-    @State private var providerFrame: CGRect = .zero
     @State private var addBlockFrame: CGRect = .zero
 
     // MARK: Drag-to-reorder state
@@ -76,7 +75,9 @@ struct FuelTabView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: Spacing.md) {
             VStack(alignment: .leading, spacing: Spacing.hair) {
-                providerPicker
+                Text("CLAUDE FUEL")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .kerning(1.5)
                 HStack(spacing: Spacing.s) {
                     Circle()
                         .fill(hasLive ? Color(red: 0.36, green: 0.86, blue: 0.52) : Color.white.opacity(0.35))
@@ -107,43 +108,6 @@ struct FuelTabView: View {
         }
     }
 
-    /// The header title, tappable to switch which AI's fuel we're reading.
-    private var providerPicker: some View {
-        Button {
-            presentProviderMenu()
-        } label: {
-            HStack(spacing: Spacing.s) {
-                Text(settings.fuelProvider.headerTitle)
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
-                    .kerning(1.5)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(Theme.secondaryText)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .linkCursor()
-        .accessibilityLabel("Choose AI")
-        .background {
-            GeometryReader { geo in
-                Color.clear
-                    .onAppear { providerFrame = geo.frame(in: .global) }
-                    .onChange(of: geo.frame(in: .global)) { _, f in providerFrame = f }
-            }
-        }
-    }
-
-    private func presentProviderMenu() {
-        let items = AIProvider.allCases.map { p in
-            GlassMenuItem.item(p.title, systemImage: p.symbol) {
-                settings.fuelProvider = p
-                fuel.select(p)
-            }
-        }
-        glassMenu.show(items, at: CGPoint(x: providerFrame.minX, y: providerFrame.maxY + 6))
-    }
-
     // MARK: - Big level meter (session gauge)
 
     private var sessionMeterCard: some View {
@@ -161,6 +125,8 @@ struct FuelTabView: View {
                     HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
                         Text("\(Int((remaining * 100).rounded()))")
                             .font(.system(size: 26, weight: .bold, design: .rounded).monospacedDigit())
+                            .contentTransition(.numericText(value: (remaining * 100).rounded()))
+                            .animation(.snappy(duration: 0.4), value: remaining)
                         Text("% left")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Theme.secondaryText)
@@ -362,6 +328,8 @@ struct FuelTabView: View {
                     .font(.system(size: 30, weight: .heavy, design: .rounded).monospacedDigit())
                     .lineLimit(1)
                     .minimumScaleFactor(0.4)
+                    .contentTransition(.numericText())
+                    .animation(.snappy(duration: 0.4), value: r.bigNumber)
                 if !r.bigUnit.isEmpty {
                     Text(r.bigUnit)
                         .font(.system(size: 13, weight: .bold))
@@ -847,6 +815,9 @@ private struct HeroStat: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.35)
                     .layoutPriority(1)
+                    // Roll the readout when usage refreshes instead of snapping.
+                    .contentTransition(.numericText())
+                    .animation(.snappy(duration: 0.4), value: number)
                 if !unit.isEmpty {
                     Text(unit)
                         .font(.system(size: 11, weight: .bold))

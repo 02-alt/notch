@@ -27,6 +27,11 @@ struct CollapsedMediaView: View {
     /// obvious the screen is being captured even with the panel collapsed.
     @ObservedObject private var recorder = ScreenRecorder.shared
 
+    /// The album-art hero-morph namespace, injected by `RootView`. The collapsed cover
+    /// is the source while closed; the open Media tab's cover takes over once open, so
+    /// the art glides between them (see `artwork`).
+    @Environment(\.heroNamespace) private var heroNamespace
+
     /// The size of the collapsed pill (matches the physical notch when welded).
     let size: CGSize
 
@@ -125,7 +130,7 @@ struct CollapsedMediaView: View {
                         .font(.system(size: art * 0.44, weight: .semibold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                        .fixedSize()
+                        .truncationMode(.tail)
                         .padding(.leading, Spacing.sm)
                     Spacer(minLength: hInset)
                     PulseDot(color: eventTint(event), diameter: art * 0.5)
@@ -175,12 +180,29 @@ struct CollapsedMediaView: View {
         .padding(.vertical, vInset)
         .frame(width: size.width, height: size.height)
         .opacity(visible ? 1 : 0)
-        .animation(.easeInOut(duration: 0.25), value: visible)
-        .animation(.easeInOut(duration: 0.25), value: vm.transferActive)
-        .animation(.easeInOut(duration: 0.25), value: vm.collapsedEvent)
-        .animation(.easeInOut(duration: 0.25), value: vm.islandActivity)
-        .animation(.easeInOut(duration: 0.25), value: recorder.isRecording)
-        .animation(.easeInOut(duration: 0.25), value: settings.dynamicIsland)
+        // Every collapsed-content swap shares one crossfade curve, so the six state
+        // drivers fold into a single Equatable key rather than six identical modifiers.
+        .animation(.easeInOut(duration: 0.25), value: collapsedContentKey)
+    }
+
+    /// Composite of every state that swaps what the collapsed pill shows. Any change
+    /// flips the key, driving the one crossfade above.
+    private struct CollapsedContentKey: Equatable {
+        let visible: Bool
+        let transferActive: Bool
+        let collapsedEvent: NotchViewModel.CollapsedEvent?
+        let islandActivity: NotchViewModel.IslandActivity?
+        let recording: Bool
+        let dynamicIsland: Bool
+    }
+
+    private var collapsedContentKey: CollapsedContentKey {
+        CollapsedContentKey(visible: visible,
+                            transferActive: vm.transferActive,
+                            collapsedEvent: vm.collapsedEvent,
+                            islandActivity: vm.islandActivity,
+                            recording: recorder.isRecording,
+                            dynamicIsland: settings.dynamicIsland)
     }
 
     /// The Dynamic Island's self-driven presentation. For a track change: album art
@@ -683,6 +705,30 @@ struct CollapsedMediaView: View {
         .overlay {
             RoundedRectangle(cornerRadius: art * 0.28, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.12), lineWidth: 0.5)
+        }
+        // Hero morph: only while the Media tab is the one that would open, so the
+        // cover glides out to the open player's artwork (which is the source once
+        // open) instead of cross-fading. On any other tab there's no destination, so
+        // the effect is skipped entirely.
+        .modifier(HeroArtMorph(namespace: heroNamespace,
+                               active: vm.selectedTab == .media,
+                               isSource: !vm.isOpen))
+    }
+}
+
+/// Applies the shared album-art `matchedGeometryEffect` when a namespace is in scope
+/// and the morph is active; otherwise a no-op. Keeps the conditional out of the two
+/// call sites (collapsed pill + open player) so they read cleanly.
+struct HeroArtMorph: ViewModifier {
+    let namespace: Namespace.ID?
+    var active: Bool = true
+    let isSource: Bool
+
+    func body(content: Content) -> some View {
+        if let namespace, active {
+            content.matchedGeometryEffect(id: "mediaHeroArt", in: namespace, isSource: isSource)
+        } else {
+            content
         }
     }
 }

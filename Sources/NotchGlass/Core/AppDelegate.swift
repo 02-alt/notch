@@ -16,9 +16,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let batteryMonitor = BatteryMonitor()
     private let cpuMonitor = CPUMonitor()
     private let messagesStore = MessagesStore()
+    private let twitchStore = TwitchStore()
     private let weatherGlance = WeatherGlanceMonitor()
     private var airDropWatcher: AirDropWatcher?
     private var cancellables = Set<AnyCancellable>()
+    /// Incoming Twitch chat notices, throttled before they flash on the closed notch so a
+    /// busy channel shows a readable peek (latest line per window) instead of flickering.
+    private let twitchChatFlash = PassthroughSubject<NotchViewModel.CollapsedEvent, Never>()
 
     /// Tear the Core Audio process tap down cleanly on quit. Without this a hard exit
     /// can leave the private tap/aggregate stranded in `coreaudiod`, so a relaunched
@@ -92,6 +96,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // fuel gauge (`collapsedResting == .fuel`). Run it whenever either wants it,
         // so it never touches the network/keychain unless the user asked for it.
         fuelEvents.onEvent = { [weak self] event in self?.viewModel.flash(event) }
+
+        // Twitch chat peek: keep a background chat socket alive while the toggle is on,
+        // and flash chat *highlights* (mentions, cheers, subs/raids) on the closed notch.
+        // Skip flashing while the panel is open (you're already looking at the full chat).
+        twitchStore.onChatEvent = { [weak self] event in self?.twitchChatFlash.send(event) }
+        twitchChatFlash
+            .throttle(for: .seconds(3), scheduler: DispatchQueue.main, latest: true)
+            .sink { [weak self] event in
+                guard let self, !self.viewModel.isOpen else { return }
+                self.viewModel.flash(event)
+            }
+            .store(in: &cancellables)
+        settings.$collapsedShowsTwitchChat
+            .removeDuplicates()
+            .sink { [weak self] on in self?.twitchStore.setBackgroundChat(on) }
+            .store(in: &cancellables)
         settings.$collapsedShowsFuelEvents
             .combineLatest(settings.$collapsedResting)
             .map { showsEvents, resting in showsEvents || resting == .fuel }
@@ -261,6 +281,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .environmentObject(batteryMonitor)
                 .environmentObject(cpuMonitor)
                 .environmentObject(messagesStore)
+                .environmentObject(twitchStore)
                 .ignoresSafeArea()
         )
 

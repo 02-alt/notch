@@ -1,33 +1,5 @@
 import Foundation
 
-/// Which AI's usage the Fuel tab is showing. The header title in the Fuel tab is a
-/// picker over these — Claude reads Claude Code's OAuth usage + local transcripts,
-/// ChatGPT reads the local Codex/ChatGPT login and its session transcripts.
-enum AIProvider: String, CaseIterable, Identifiable {
-    case claude
-    case chatgpt
-
-    var id: String { rawValue }
-
-    /// Short display name for the picker ("Claude", "ChatGPT").
-    var title: String {
-        switch self {
-        case .claude:  return "Claude"
-        case .chatgpt: return "ChatGPT"
-        }
-    }
-
-    /// The big monospaced header label ("CLAUDE FUEL", "CHATGPT FUEL").
-    var headerTitle: String { "\(title.uppercased()) FUEL" }
-
-    var symbol: String {
-        switch self {
-        case .claude:  return "sparkles"
-        case .chatgpt: return "bubble.left.and.bubble.right.fill"
-        }
-    }
-}
-
 /// The stat readouts on the Fuel tab. The layout is a single ordered list: the first
 /// block is drawn large as the headline gauge, the rest as a grid of small cards. The
 /// user reorders them (drag) and picks which is the big one (drag it to the top slot),

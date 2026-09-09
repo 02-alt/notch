@@ -33,6 +33,16 @@ else
     echo "⚠︎ ambience resources not found at $AMBIENCE_SRC" >&2
 fi
 
+# Bundle the Space tab's imagery (NASA public-domain ISS photo) the same way, into
+# Contents/Resources/space, so it loads via `Bundle.main` inside the .app.
+SPACE_SRC="Sources/NotchGlass/Resources/space"
+if [ -d "$SPACE_SRC" ]; then
+    mkdir -p "$APP/Contents/Resources/space"
+    cp -R "$SPACE_SRC/." "$APP/Contents/Resources/space/"
+else
+    echo "⚠︎ space resources not found at $SPACE_SRC" >&2
+fi
+
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

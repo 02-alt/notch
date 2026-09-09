@@ -132,6 +132,10 @@ struct CountdownTabView: View {
                 .foregroundStyle(Theme.primaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
+                // Roll the digits like an odometer as the count ticks down, rather
+                // than hard-cutting to the new value — the iOS-native numeric feel.
+                .contentTransition(.numericText(value: Double(value)))
+                .animation(.snappy(duration: 0.35), value: value)
             Text(label)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(Theme.secondaryText)
