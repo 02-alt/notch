@@ -245,10 +245,15 @@ final class TwitchStore: ObservableObject {
     }
 
     /// True when the line names the broadcaster (by display name or login, case-insensitive).
+    /// Matches whole words only — split on non-name characters and compare tokens (a
+    /// leading "@" stripped) — so an incidental substring like "category" containing the
+    /// login "cat" isn't treated as an @-mention.
     private func mentionsMe(_ text: String) -> Bool {
-        let hay = text.lowercased()
-        let names = [displayName, login].filter { !$0.isEmpty }.map { $0.lowercased() }
-        return names.contains { hay.contains($0) }
+        let names = Set([displayName, login].filter { !$0.isEmpty }.map { $0.lowercased() })
+        guard !names.isEmpty else { return false }
+        let isName: (Character) -> Bool = { $0.isLetter || $0.isNumber || $0 == "_" }
+        let tokens = text.lowercased().split(whereSeparator: { !isName($0) })
+        return tokens.contains { names.contains(String($0)) }
     }
 
     private func scheduleChatReconnect() {

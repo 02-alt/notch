@@ -69,8 +69,11 @@ enum Updater {
 
     // MARK: - Alert
 
-    /// Retains the alert window controller for the window's lifetime.
-    private static var windowController: NSWindowController?
+    /// Retains each live alert's window controller until its window closes. A set
+    /// (not a single shared reference) so two dialogs — e.g. a background check and a
+    /// manual one — can't step on each other: closing one must not close or orphan the
+    /// other's window.
+    private static var controllers: Set<NSWindowController> = []
 
     /// Presents a small dialog *above* the notch panel.
     ///
@@ -93,23 +96,24 @@ enum Updater {
                                actionURL: URL? = nil) {
         NSApp.activate(ignoringOtherApps: true)
 
-        let view = UpdaterAlertView(
-            title: title,
-            message: message,
-            actionTitle: (actionTitle != nil && actionURL != nil) ? actionTitle : nil,
-            onAction: {
-                if let actionURL { NSWorkspace.shared.open(actionURL) }
-                closeWindow()
-            },
-            onClose: { closeWindow() }
-        )
-
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 380, height: 180),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
+
+        let view = UpdaterAlertView(
+            title: title,
+            message: message,
+            actionTitle: (actionTitle != nil && actionURL != nil) ? actionTitle : nil,
+            onAction: { [weak window] in
+                if let actionURL { NSWorkspace.shared.open(actionURL) }
+                window?.close()
+            },
+            onClose: { [weak window] in window?.close() }
+        )
+
         window.title = "NotchGlass"
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: view)
@@ -119,20 +123,29 @@ enum Updater {
         window.center()
 
         let controller = NSWindowController(window: window)
-        windowController = controller
+        controllers.insert(controller)
         controller.showWindow(nil)
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
 
-        NotificationCenter.default.addObserver(
+        // Drop *this* controller (and this observer) once its own window closes, so a
+        // second dialog opened meanwhile is untouched and no observer leaks. The token is
+        // held in a box so the @Sendable close handler can read it back to deregister.
+        let box = ObserverBox()
+        box.token = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification, object: window, queue: .main
         ) { _ in
-            MainActor.assumeIsolated { windowController = nil }
+            MainActor.assumeIsolated {
+                controllers.remove(controller)
+                if let token = box.token { NotificationCenter.default.removeObserver(token) }
+            }
         }
     }
 
-    private static func closeWindow() {
-        windowController?.window?.close()
+    /// Holds a NotificationCenter observer token so a `@Sendable` close handler can read
+    /// it back to deregister itself. Touched only on the main queue.
+    private final class ObserverBox: @unchecked Sendable {
+        var token: NSObjectProtocol?
     }
 }
 

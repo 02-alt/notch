@@ -144,13 +144,19 @@ final class ISSPassManager: ObservableObject {
         track = result.2
     }
 
-    /// Cheap, frequent refresh of just the live "where is it now" dot and the ground
-    /// track, without recomputing the whole pass list.
-    func refreshNow(latitude: Double, longitude: Double) {
+    /// Frequent refresh of just the live "where is it now" dot and the ground track,
+    /// without recomputing the whole pass list. The propagation (currentPosition + a
+    /// full ~51-sample groundTrack) runs off the main actor — same as `load` — so the
+    /// 3-second refresh loop can't stutter the UI while the Space tab is open.
+    func refreshNow(latitude: Double, longitude: Double) async {
         guard let sgp4 else { return }
         let t = Date()
-        now = SkyGeometry.currentPosition(sgp4, latitude: latitude, longitude: longitude, at: t)
-        track = SkyGeometry.groundTrack(sgp4, at: t)
+        let result = await Task.detached(priority: .userInitiated) {
+            (SkyGeometry.currentPosition(sgp4, latitude: latitude, longitude: longitude, at: t),
+             SkyGeometry.groundTrack(sgp4, at: t))
+        }.value
+        now = result.0
+        track = result.1
     }
 
     /// The next pass that's actually naked-eye visible, else the next pass at all.

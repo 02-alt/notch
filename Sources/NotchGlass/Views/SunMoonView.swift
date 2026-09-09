@@ -191,7 +191,10 @@ struct SkyModel: Equatable {
         let dusk    = Self.crossing(sun, level: -6, rising: false, after: sunset)
         let goldenAMStart = Self.crossing(sun, level: -4, rising: true)
         let goldenAMEnd   = Self.crossing(sun, level: 6,  rising: true)
-        let goldenPMEnd   = Self.crossing(sun, level: -4, rising: false, after: golden)
+        // Only look for the evening golden-hour end once we have its start (`golden`);
+        // otherwise a day where the sun never climbs past +6° (high-latitude winter)
+        // yields an evening −4° crossing with no start, rendering a startless window.
+        let goldenPMEnd   = golden.flatMap { Self.crossing(sun, level: -4, rising: false, after: $0) }
         let dayLen: TimeInterval? = (sunrise != nil && sunset != nil)
             ? sunset!.timeIntervalSince(sunrise!) : nil
 

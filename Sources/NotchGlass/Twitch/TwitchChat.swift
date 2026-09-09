@@ -23,6 +23,10 @@ final class TwitchChat {
     /// `task`, which the background receive/send read) avoids a cross-thread race on the
     /// task reference.
     private var closed = false
+    /// Whether we've told the store we're connected yet — flipped true on the *first*
+    /// frame the server actually delivers (not optimistically at `connect`), so a socket
+    /// that never opens is never reported as a live chat.
+    private var announcedConnected = false
     private let session = URLSession(configuration: .default)
 
     var onMessage: ((ChatMessage) -> Void)?
@@ -45,7 +49,8 @@ final class TwitchChat {
         sendRaw("PASS oauth:\(token)")
         sendRaw("NICK \(login)")
         sendRaw("JOIN #\(login)")
-        onConnected?(true)
+        // `onConnected?(true)` is deferred to the first received frame (see `receive`) so
+        // a socket that never opens isn't reported as connected.
         receive()
     }
 
@@ -75,6 +80,11 @@ final class TwitchChat {
                 // Report the drop; the store schedules a reconnect. Don't re-arm.
                 self.onConnected?(false)
             case .success(let message):
+                // The socket is genuinely up once the server sends its first frame.
+                if !self.announcedConnected {
+                    self.announcedConnected = true
+                    self.onConnected?(true)
+                }
                 switch message {
                 case .string(let text): self.handle(text)
                 case .data(let data): self.handle(String(decoding: data, as: UTF8.self))

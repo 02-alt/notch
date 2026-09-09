@@ -44,7 +44,7 @@ struct SpaceTabView: View {
         .task {
             while !Task.isCancelled {
                 if let c = location.location?.coordinate {
-                    iss.refreshNow(latitude: c.latitude, longitude: c.longitude)
+                    await iss.refreshNow(latitude: c.latitude, longitude: c.longitude)
                 }
                 try? await Task.sleep(nanoseconds: 3_000_000_000)
             }
@@ -112,6 +112,12 @@ private struct LiveMapCard: View {
     let isLoading: Bool
     let error: String?
 
+    /// The last ground longitude the marker was drawn at, so a ±180° wrap (once per
+    /// orbit) can be detected and the slide-across-the-map animation suppressed for
+    /// that one step. Updated after each render (see `marker`), so during the wrap
+    /// render it still holds the pre-wrap longitude and the jump reads as > 180°.
+    @State private var lastLon: Double?
+
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
@@ -160,6 +166,9 @@ private struct LiveMapCard: View {
     @ViewBuilder private func marker(_ r: CGRect) -> some View {
         if let now {
             let p = Self.project(lat: now.subLatitude, lon: now.subLongitude, in: r)
+            // A ±180° longitude wrap teleports the point edge-to-edge; don't tween that
+            // (it'd slide the ISS backward across the whole map), only smooth normal steps.
+            let wrapped = lastLon.map { abs($0 - now.subLongitude) > 180 } ?? false
             Group {
                 if let iss = SpaceAsset.iss {
                     ZStack {
@@ -182,7 +191,9 @@ private struct LiveMapCard: View {
                 }
             }
             .position(p)
-            .animation(.linear(duration: 3), value: p)
+            .animation(wrapped ? nil : .linear(duration: 3), value: p)
+            .onChange(of: now.subLongitude) { _, new in lastLon = new }
+            .onAppear { lastLon = now.subLongitude }
         }
     }
 
