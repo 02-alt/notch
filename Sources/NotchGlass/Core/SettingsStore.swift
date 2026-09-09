@@ -233,6 +233,8 @@ final class SettingsStore: ObservableObject {
         // prompt for Automation) without the user ever choosing it.
         let yoinInstalled = NSWorkspace.shared
             .urlForApplication(withBundleIdentifier: MediaSource.yoin.bundleID) != nil
+        let reedInstalled = NSWorkspace.shared
+            .urlForApplication(withBundleIdentifier: MediaSource.reed.bundleID) != nil
         if let raw = defaults.array(forKey: "set.enabledSources") as? [String] {
             var sources = Set(raw.compactMap { MediaSource(rawValue: $0) })
             // One-time: fold Yoin into an existing install's enabled set (it didn't
@@ -244,12 +246,19 @@ final class SettingsStore: ObservableObject {
                 defaults.set(sources.map(\.rawValue), forKey: "set.enabledSources")
                 defaults.set(true, forKey: "set.yoinAdded")
             }
+            // Same one-time fold for Reed (the podcast player) once it's installed.
+            if reedInstalled && !defaults.bool(forKey: "set.reedAdded") {
+                sources.insert(.reed)
+                defaults.set(sources.map(\.rawValue), forKey: "set.enabledSources")
+                defaults.set(true, forKey: "set.reedAdded")
+            }
             enabledSources = sources
         } else {
-            // Default: the mainstream players (plus Yoin when installed) only, so a fresh
-            // install doesn't prompt for every browser — or a player — you don't have.
+            // Default: the mainstream players (plus Yoin/Reed when installed) only, so a
+            // fresh install doesn't prompt for every browser — or a player — you don't have.
             var defaults0: Set<MediaSource> = [.music, .spotify, .safari, .chrome]
             if yoinInstalled { defaults0.insert(.yoin); defaults.set(true, forKey: "set.yoinAdded") }
+            if reedInstalled { defaults0.insert(.reed); defaults.set(true, forKey: "set.reedAdded") }
             enabledSources = defaults0
         }
         showArtwork = defaults.object(forKey: "set.showArtwork") as? Bool ?? true

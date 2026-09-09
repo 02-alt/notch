@@ -13,6 +13,7 @@ enum MediaSource: String, CaseIterable {
     case vivaldi = "Vivaldi"
     case arc = "Arc"
     case yoin = "Yoin"
+    case reed = "Reed"
 
     var bundleID: String {
         switch self {
@@ -25,14 +26,15 @@ enum MediaSource: String, CaseIterable {
         case .vivaldi: return "com.vivaldi.Vivaldi"
         case .arc:     return "company.thebrowser.Browser"
         case .yoin:    return "com.yoin.player"
+        case .reed:    return "com.example.RSSReader"
         }
     }
 
     /// Browsers are read/controlled via injected JavaScript rather than the
-    /// scriptable player commands the native music apps (Music, Spotify, Yoin) expose.
+    /// scriptable player commands the native music apps (Music, Spotify, Yoin, Reed) expose.
     var isBrowser: Bool {
         switch self {
-        case .music, .spotify, .yoin: return false
+        case .music, .spotify, .yoin, .reed: return false
         default: return true
         }
     }
