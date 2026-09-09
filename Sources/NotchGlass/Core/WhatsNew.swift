@@ -34,6 +34,37 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.09.2",
+            summary: "Two new tabs, podcasts in the notch, and a smoother finish.",
+            changes: [
+                ReleaseChange(
+                    symbol: "globe.americas.fill",
+                    title: "Track the Space Station",
+                    detail: "A new Space tab predicts when the ISS will pass over you and shows it live on a world map — its ground track, speed, altitude and whether it's sunlit — so you know when to look up. Add it from the “+”."
+                ),
+                ReleaseChange(
+                    symbol: "dot.radiowaves.left.and.right",
+                    title: "Twitch tab",
+                    detail: "Sign in with Twitch to edit your stream's title and category and follow live chat — reply from the notch, with @-mentions highlighted."
+                ),
+                ReleaseChange(
+                    symbol: "waveform",
+                    title: "Podcasts from Reed",
+                    detail: "The Media tab now reads and controls Reed's podcast player — episode, show, artwork, chapters, scrubbing and transport — right alongside Music and Spotify. It appears automatically once Reed is installed."
+                ),
+                ReleaseChange(
+                    symbol: "wand.and.stars",
+                    title: "A smoother finish",
+                    detail: "Numbers roll like an odometer, the album art glides between the closed notch and the open player, and transitions across the app feel more fluid."
+                ),
+                ReleaseChange(
+                    symbol: "checkmark.seal.fill",
+                    title: "Fixes & polish",
+                    detail: "The now-playing cover no longer flickers between apps, picking a tab from “+” keeps the panel open, and a batch of stability fixes across updates, the Space map and Twitch chat."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.09.1",
             summary: "The Ambient crash is finally, actually fixed.",
             changes: [
