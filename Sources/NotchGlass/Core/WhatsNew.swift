@@ -34,6 +34,17 @@ enum WhatsNew {
     /// The changelog, **newest first**. Prepend a new entry each release.
     static let releases: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.26.09.3",
+            summary: "Your Obsidian vault, right in the notch.",
+            changes: [
+                ReleaseChange(
+                    symbol: "circle.hexagongrid.fill",
+                    title: "Obsidian tab",
+                    detail: "Connect your Obsidian vault and browse, search and preview any note without leaving the notch. Quick-capture drops a timestamped line into today's daily note, and “Open” jumps straight into Obsidian. It's all file-based, so changes sync both ways with no plugin. Add it from the “+”."
+                ),
+            ]
+        ),
+        ReleaseNote(
             version: "1.26.09.2",
             summary: "Two new tabs, podcasts in the notch, and a smoother finish.",
             changes: [
