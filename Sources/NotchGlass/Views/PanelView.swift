@@ -79,6 +79,7 @@ struct PanelView: View {
                         case .messages: MessagesTabView()
                         case .twitch: TwitchTabView()
                         case .space:  SpaceTabView()
+                        case .obsidian: ObsidianTabView()
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

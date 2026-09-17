@@ -22,6 +22,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
     case messages
     case twitch
     case space
+    case obsidian
 
     var id: String { rawValue }
 
@@ -52,6 +53,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .messages: return "message.fill"
         case .twitch: return "antenna.radiowaves.left.and.right"
         case .space:   return "sparkles"
+        case .obsidian: return "circle.hexagongrid.fill"
         }
     }
 
@@ -77,6 +79,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .messages: return "Messages"
         case .twitch: return "Twitch"
         case .space:   return "Space"
+        case .obsidian: return "Obsidian"
         }
     }
 
@@ -104,6 +107,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .messages: return "Read & reply to iMessage"
         case .twitch: return "Edit stream & watch chat"
         case .space:    return "ISS flyovers overhead"
+        case .obsidian: return "Browse & capture to your vault"
         }
     }
 
@@ -132,6 +136,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .messages: return ["imessage", "texts", "sms", "chat", "reply", "conversations", "inbox"]
         case .twitch: return ["twitch", "stream", "live", "chat", "broadcast", "category", "title", "streaming"]
         case .space:    return ["iss", "space", "station", "flyover", "orbit", "sky", "stars"]
+        case .obsidian: return ["obsidian", "vault", "notes", "markdown", "md", "zettelkasten", "pkm", "capture", "daily"]
         }
     }
 
@@ -150,7 +155,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
     var category: Category {
         switch self {
         case .media, .ambient:            return .media
-        case .drop, .website, .note, .scratch, .fuel, .record, .deck, .shortcuts, .messages, .twitch: return .tools
+        case .drop, .website, .note, .scratch, .fuel, .record, .deck, .shortcuts, .messages, .twitch, .obsidian: return .tools
         case .mood, .map, .weather, .clock, .calendar, .now, .countdown, .space: return .glance
         }
     }
