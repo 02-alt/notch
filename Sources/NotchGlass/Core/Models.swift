@@ -23,6 +23,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
     case twitch
     case space
     case obsidian
+    case call
 
     var id: String { rawValue }
 
@@ -59,6 +60,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .twitch: return "antenna.radiowaves.left.and.right"
         case .space:   return "sparkles"
         case .obsidian: return "circle.hexagongrid.fill"
+        case .call:     return "phone.and.waveform.fill"
         }
     }
 
@@ -85,6 +87,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .twitch: return "Twitch"
         case .space:   return "Space"
         case .obsidian: return "Obsidian"
+        case .call:     return "Call"
         }
     }
 
@@ -113,6 +116,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .twitch: return "Edit stream & watch chat"
         case .space:    return "ISS flyovers overhead"
         case .obsidian: return "Browse & capture to your vault"
+        case .call:     return "Mute, camera & call alerts"
         }
     }
 
@@ -142,6 +146,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
         case .twitch: return ["twitch", "stream", "live", "chat", "broadcast", "category", "title", "streaming"]
         case .space:    return ["iss", "space", "station", "flyover", "orbit", "sky", "stars"]
         case .obsidian: return ["obsidian", "vault", "notes", "markdown", "md", "zettelkasten", "pkm", "capture", "daily"]
+        case .call:     return ["call", "mic", "mute", "camera", "meeting", "zoom", "discord", "teams", "meet", "slack", "voice", "webcam", "screen share"]
         }
     }
 
@@ -160,7 +165,7 @@ enum NotchTab: String, CaseIterable, Identifiable {
     var category: Category {
         switch self {
         case .media, .ambient:            return .media
-        case .drop, .website, .note, .scratch, .fuel, .record, .deck, .shortcuts, .messages, .twitch, .obsidian: return .tools
+        case .drop, .website, .note, .scratch, .fuel, .record, .deck, .shortcuts, .messages, .twitch, .obsidian, .call: return .tools
         case .mood, .map, .weather, .clock, .calendar, .now, .countdown, .space: return .glance
         }
     }

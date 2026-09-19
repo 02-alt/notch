@@ -61,6 +61,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>LSUIElement</key>             <true/>
     <key>NSAppleEventsUsageDescription</key>
     <string>NotchGlass reads and controls the currently playing track in Music and Spotify.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>NotchGlass shows your live microphone level and mute state in the Call tab. Audio is metered locally and never recorded or sent anywhere.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>NotchGlass shows your location on the Map and Weather tabs.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>

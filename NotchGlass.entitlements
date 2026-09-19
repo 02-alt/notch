@@ -6,5 +6,9 @@
          Events to Music / Spotify / browsers needs this entitlement. -->
     <key>com.apple.security.automation.apple-events</key>
     <true/>
+    <!-- The Call tab meters the live microphone level; the hardened runtime requires
+         this entitlement for mic access (alongside the TCC prompt). -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
 </dict>
 </plist>

@@ -158,6 +158,10 @@ enum Metrics {
     /// so the fixed window never has to grow to hold it.
     static let obsidianHeight: CGFloat = 460
 
+    /// Body height for the Call tab: a live status hero (mic/camera/screen), a level
+    /// meter and the mute/device controls. Kept below `moodExpandedHeight`.
+    static let callHeight: CGFloat = 360
+
     /// Body height for the Space tab, which is a single full-bleed live world map.
     /// Sized so the map area (body minus the ~88pt of chrome: TopBar + insets + stack
     /// gap) is roughly 2:1 against the default content width, so the whole globe shows
@@ -222,6 +226,7 @@ enum Metrics {
         if tab == .twitch { return twitchHeight }
         if tab == .space { return spaceHeight }
         if tab == .obsidian { return obsidianHeight }
+        if tab == .call { return callHeight }
         return openHeight
     }
 

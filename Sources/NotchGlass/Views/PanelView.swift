@@ -80,6 +80,7 @@ struct PanelView: View {
                         case .twitch: TwitchTabView()
                         case .space:  SpaceTabView()
                         case .obsidian: ObsidianTabView()
+                        case .call:   CallTabView()
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
