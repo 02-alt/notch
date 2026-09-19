@@ -127,8 +127,10 @@ final class SettingsStore: ObservableObject {
         didSet { defaults.set(enabledTabs.map(\.rawValue), forKey: "set.enabledTabs") }
     }
 
-    /// Tabs not yet in the bar — what the "+" menu offers.
-    var addableTabs: [NotchTab] { NotchTab.allCases.filter { !enabledTabs.contains($0) } }
+    /// Tabs not yet in the bar — what the "+" menu offers. Hidden tabs are never offered.
+    var addableTabs: [NotchTab] {
+        NotchTab.allCases.filter { !enabledTabs.contains($0) && !NotchTab.hidden.contains($0) }
+    }
 
     /// Whether a tab can be removed from the bar. Every tab is removable; the
     /// only floor is that at least one tab must remain (enforced in `removeTab`).
@@ -271,9 +273,12 @@ final class SettingsStore: ObservableObject {
         minimalNotch = defaults.object(forKey: "set.minimalNotch") as? Bool ?? false
         collapsedResting = CollapsedResting(rawValue: defaults.string(forKey: "set.collapsedResting") ?? "") ?? .none
         collapsedFuelCombined = defaults.object(forKey: "set.collapsedFuelCombined") as? Bool ?? false
-        defaultTab = NotchTab(rawValue: defaults.string(forKey: "set.defaultTab") ?? "") ?? .media
+        let savedDefault = NotchTab(rawValue: defaults.string(forKey: "set.defaultTab") ?? "") ?? .media
+        defaultTab = NotchTab.hidden.contains(savedDefault) ? .media : savedDefault
         if let raw = defaults.array(forKey: "set.enabledTabs") as? [String] {
-            let tabs = raw.compactMap { NotchTab(rawValue: $0) }
+            // Drop any hidden tabs (e.g. one enabled before it was hidden) so they no
+            // longer appear in the bar; fall back to the defaults if nothing's left.
+            let tabs = raw.compactMap { NotchTab(rawValue: $0) }.filter { !NotchTab.hidden.contains($0) }
             enabledTabs = tabs.isEmpty ? NotchTab.defaultTabs : tabs
         } else {
             enabledTabs = NotchTab.defaultTabs

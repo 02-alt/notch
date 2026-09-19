@@ -31,6 +31,11 @@ enum NotchTab: String, CaseIterable, Identifiable {
     /// re-addable from the "+" menu afterwards (Fuel just isn't shown by default).
     static let defaultTabs: [NotchTab] = [.media, .note, .drop, .map]
 
+    /// Tabs kept in the code but not surfaced anywhere for now — hidden from the "+"
+    /// gallery and stripped from the enabled bar on load. Empty this set to bring one
+    /// back; nothing else needs to change.
+    static let hidden: Set<NotchTab> = [.space, .obsidian]
+
     var symbol: String {
         switch self {
         case .media:   return "house.fill"
