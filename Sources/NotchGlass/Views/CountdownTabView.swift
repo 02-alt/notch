@@ -7,11 +7,16 @@ import SwiftUI
 /// so it adapts to every panel surface.
 struct CountdownTabView: View {
     @EnvironmentObject private var settings: SettingsStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @AppStorage("countdown.events") private var eventsJSON = "[]"
     @State private var isAdding = false
     @State private var newTitle = ""
     @State private var newDate = Date().addingTimeInterval(86_400)
+
+    /// The tab's one open/close spring — the shared panel motion, silenced when the
+    /// system asks for reduced motion.
+    private var toggleSpring: Animation? { reduceMotion ? nil : Metrics.openSpring }
 
     private var events: [CountdownEvent] {
         let list = (try? JSONDecoder().decode([CountdownEvent].self, from: Data(eventsJSON.utf8))) ?? []
@@ -46,35 +51,23 @@ struct CountdownTabView: View {
     // MARK: Header
 
     private var header: some View {
-        HStack {
-            Text("COUNTDOWN")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(Theme.secondaryText)
-                .kerning(0.6)
-            Spacer(minLength: 0)
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { isAdding.toggle() }
-            } label: {
-                Image(systemName: isAdding ? "xmark" : "plus")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Theme.primaryText)
-                    .frame(width: 24, height: 24)
-                    .background { Circle().fill(Theme.line(0.10)) }
+        HUDSectionHeader("COUNTDOWN") {
+            HUDIconButton(symbol: isAdding ? "xmark" : "plus",
+                          help: isAdding ? "Close" : "Add a countdown") {
+                withAnimation(toggleSpring) { isAdding.toggle() }
             }
-            .buttonStyle(.plain)
-            .notchHover(scale: 1.08)
-            .help("Add a countdown")
         }
     }
 
     private func content(now: Date) -> some View {
-        VStack(spacing: Spacing.base) {
-            let all = events
-            if all.isEmpty && !isAdding {
+        let all = events
+        return VStack(spacing: Spacing.base) {
+            if all.isEmpty {
                 emptyState
             } else if let hero = all.first {
-                heroCard(hero, now: now)
                 if all.count > 1 {
+                    // With a list, the hero leads and the rest scroll beneath it.
+                    heroCard(hero, now: now)
                     ScrollView(.vertical, showsIndicators: false) {
                         VStack(spacing: Spacing.sm) {
                             ForEach(all.dropFirst()) { event in
@@ -83,24 +76,33 @@ struct CountdownTabView: View {
                         }
                         .padding(.vertical, Spacing.hair)
                     }
+                } else {
+                    // A lone countdown floats centred, so it isn't stranded at the top
+                    // above a big empty panel.
+                    Spacer(minLength: 0)
+                    heroCard(hero, now: now)
+                    Spacer(minLength: 0)
                 }
             }
         }
-        // Pin to the top under the header — otherwise the enclosing full-height
-        // frame centres the form/hero vertically, leaving a gap under the tab bar.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Top-align when there's a scrolling list; centre a single hero.
+        .frame(maxWidth: .infinity, maxHeight: .infinity,
+               alignment: all.count > 1 ? .top : .center)
     }
 
     // MARK: Hero
 
     private func heroCard(_ event: CountdownEvent, now: Date) -> some View {
         let parts = Self.breakdown(to: event.date, from: now)
-        return VStack(spacing: Spacing.sm) {
+        return VStack(spacing: Spacing.md) {
+            Image(systemName: parts.past ? "checkmark.seal.fill" : "hourglass")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(settings.accent)
             Text(event.title)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
                 .lineLimit(1)
-            HStack(alignment: .firstTextBaseline, spacing: Spacing.base) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.lg) {
                 heroUnit(parts.days, "days")
                 heroUnit(parts.hours, "hrs")
                 heroUnit(parts.minutes, "min")
@@ -108,20 +110,14 @@ struct CountdownTabView: View {
             Text(parts.past
                  ? "\(Self.longDate(event.date)) · elapsed"
                  : Self.longDate(event.date))
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(parts.past ? settings.accent : Theme.tertiaryText)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(parts.past ? settings.accent : Theme.secondaryText)
         }
+        .padding(.vertical, Spacing.sm)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, Spacing.base)
-        .padding(.horizontal, Spacing.base)
-        .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(settings.accent.opacity(0.12))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(settings.accent.opacity(0.35), lineWidth: 1)
-                }
-        }
+        .hudCard(hero: true)
+        // A soft accent halo lifts the lone card off the black stage.
+        .shadow(color: settings.accent.opacity(0.18), radius: 28)
         .contextMenu { removeButton(event) }
     }
 
@@ -135,9 +131,9 @@ struct CountdownTabView: View {
                 // Roll the digits like an odometer as the count ticks down, rather
                 // than hard-cutting to the new value — the iOS-native numeric feel.
                 .contentTransition(.numericText(value: Double(value)))
-                .animation(.snappy(duration: 0.35), value: value)
+                .animation(reduceMotion ? nil : .snappy(duration: 0.35), value: value)
             Text(label)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(Theme.secondaryText)
                 .textCase(.uppercase)
         }
@@ -150,12 +146,12 @@ struct CountdownTabView: View {
         return HStack(spacing: Spacing.sm) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(event.title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Theme.primaryText)
                     .lineLimit(1)
                 Text(Self.mediumDate(event.date))
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(Theme.tertiaryText)
+                    .foregroundStyle(Theme.secondaryText)
                     .lineLimit(1)
             }
             Spacer(minLength: Spacing.sm)
@@ -165,9 +161,9 @@ struct CountdownTabView: View {
                 .lineLimit(1)
                 .fixedSize()
         }
-        .padding(.horizontal, Spacing.base)
-        .frame(height: 44)
-        .innerCard(cornerRadius: 12)
+        // ≥44pt touch target: Spacing.xl content + Spacing.md padding top/bottom.
+        .frame(maxWidth: .infinity, minHeight: Spacing.xl)
+        .hudCard(padding: Spacing.md)
         .contextMenu { removeButton(event) }
     }
 
@@ -204,18 +200,18 @@ struct CountdownTabView: View {
                 Spacer(minLength: 0)
                 Button("Add", action: commit)
                     .buttonStyle(.plain)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(settings.accent.readableForeground)
-                    .padding(.horizontal, Spacing.base)
-                    .frame(height: 28)
+                    .padding(.horizontal, Spacing.lg)
+                    .frame(height: 44)
                     .background { Capsule().fill(settings.accent) }
+                    .contentShape(Capsule())
                     .notchHover(scale: 1.05)
                     .disabled(newTitle.trimmingCharacters(in: .whitespaces).isEmpty)
                     .opacity(newTitle.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
             }
         }
-        .padding(Spacing.base)
-        .innerCard(cornerRadius: 14)
+        .hudCard()
     }
 
     private var emptyState: some View {
@@ -247,7 +243,7 @@ struct CountdownTabView: View {
         setEvents(events + [CountdownEvent(title: title, date: newDate)])
         newTitle = ""
         newDate = Date().addingTimeInterval(86_400)
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { isAdding = false }
+        withAnimation(toggleSpring) { isAdding = false }
     }
 
     private func remove(_ event: CountdownEvent) {
@@ -297,6 +293,7 @@ struct CountdownEvent: Codable, Identifiable, Equatable {
 private struct MonthCalendar: View {
     @Binding var selection: Date
     let accent: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The month on show — starts on the selected date's month, then follows the
     /// chevrons independently of which day is picked.
@@ -333,30 +330,22 @@ private struct MonthCalendar: View {
 
     private var monthBar: some View {
         HStack {
-            chevron("chevron.left", by: -1)
+            chevron("chevron.left", help: "Previous month", by: -1)
             Spacer(minLength: 0)
             Text(Self.monthTitle.string(from: visibleMonth))
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
             Spacer(minLength: 0)
-            chevron("chevron.right", by: 1)
+            chevron("chevron.right", help: "Next month", by: 1)
         }
     }
 
-    private func chevron(_ name: String, by delta: Int) -> some View {
-        Button {
+    private func chevron(_ name: String, help: String, by delta: Int) -> some View {
+        HUDIconButton(symbol: name, help: help) {
             if let m = cal.date(byAdding: .month, value: delta, to: visibleMonth) {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) { visibleMonth = m }
+                withAnimation(reduceMotion ? nil : Metrics.openSpring) { visibleMonth = m }
             }
-        } label: {
-            Image(systemName: name)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Theme.secondaryText)
-                .frame(width: 24, height: 24)
-                .background { Circle().fill(Theme.line(0.10)) }
         }
-        .buttonStyle(.plain)
-        .notchHover(scale: 1.1)
     }
 
     private var weekdayRow: some View {
@@ -376,7 +365,7 @@ private struct MonthCalendar: View {
         let isToday = cal.isDateInToday(day)
         let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
         return Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { pick(day) }
+            withAnimation(reduceMotion ? nil : .snappy(duration: 0.25)) { pick(day) }
         } label: {
             Text("\(cal.component(.day, from: day))")
                 .font(.system(size: 12, weight: isSelected ? .bold : .medium).monospacedDigit())

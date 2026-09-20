@@ -10,6 +10,7 @@ import CoreLocation
 struct MapTabView: View {
     @EnvironmentObject private var vm: NotchViewModel
     @EnvironmentObject private var settings: SettingsStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @StateObject private var location = LocationManager()
 
@@ -46,9 +47,11 @@ struct MapTabView: View {
                 mapPane
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        // The tab's outer frame — a rounded clip on the shared hero radius. This is the
+        // map's edge against the panel, not a card surface, so it keeps a whisper of a hairline.
+        .clipShape(RoundedRectangle(cornerRadius: HUD.heroRadius, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: HUD.heroRadius, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
         }
         .onAppear {
@@ -115,6 +118,8 @@ struct MapTabView: View {
             .padding(.vertical, Spacing.sm)
             .background { Capsule(style: .continuous).fill(Color.black.opacity(0.55)) }
             .blackGlass(in: Capsule(style: .continuous))
+            // Lift the chip off the map imagery so its text stays legible over any terrain.
+            .shadow(color: .black.opacity(0.35), radius: 10, y: 3)
 
             if let destination {
                 Button { openInMaps(destination) } label: {
@@ -124,6 +129,7 @@ struct MapTabView: View {
                         .padding(.horizontal, Spacing.base)
                         .padding(.vertical, Spacing.sm)
                         .background { Capsule().fill(settings.accent) }
+                        .shadow(color: .black.opacity(0.30), radius: 8, y: 2)
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -137,7 +143,7 @@ struct MapTabView: View {
         GlassButton(shape: AnyShape(Circle()),
                     tint: expanded ? settings.accent.opacity(0.6) : nil,
                     action: {
-                        withAnimation(Metrics.openSpring) { vm.mapExpanded.toggle() }
+                        withAnimation(reduceMotion ? nil : Metrics.openSpring) { vm.mapExpanded.toggle() }
                     }) {
             Image(systemName: expanded
                   ? "arrow.down.right.and.arrow.up.left"
@@ -146,6 +152,9 @@ struct MapTabView: View {
                 .foregroundStyle(.white)
                 .frame(width: 34, height: 34)
         }
+        // A comfortable ≥34pt target; a shadow keeps it readable over the map.
+        .shadow(color: .black.opacity(0.30), radius: 8, y: 2)
+        .help(expanded ? "Collapse" : "Expand")
         .padding(Spacing.base)
     }
 
@@ -296,12 +305,8 @@ struct MapTabView: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(Spacing.md)
                 .frame(maxWidth: .infinity)
-                .background {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
-                }
+                .hudCard(padding: Spacing.md)
             }
         }
     }
@@ -329,10 +334,7 @@ struct MapTabView: View {
 
             // Nearby quick-search.
             VStack(alignment: .leading, spacing: Spacing.sm) {
-                Text("NEARBY")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Theme.secondaryText)
-                    .kerning(0.6)
+                HUDSectionHeader("Nearby")
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Spacing.sm), count: 3),
                           spacing: Spacing.sm) {
                     ForEach(NearbyCategory.allCases) { cat in
@@ -348,10 +350,10 @@ struct MapTabView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 48)
                             .background {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.white.opacity(0.07))
+                                RoundedRectangle(cornerRadius: HUD.chipRadius, style: .continuous)
+                                    .fill(HUD.cardFill)
                             }
-                            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .contentShape(RoundedRectangle(cornerRadius: HUD.chipRadius, style: .continuous))
                         }
                         .buttonStyle(.plain)
                         .notchHover(scale: 1.05)
@@ -362,10 +364,7 @@ struct MapTabView: View {
             // Recent destinations.
             if !recents.isEmpty {
                 VStack(alignment: .leading, spacing: Spacing.s) {
-                    Text("RECENT")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(Theme.secondaryText)
-                        .kerning(0.6)
+                    HUDSectionHeader("Recent")
                     ForEach(recents.prefix(3)) { place in
                         Button { route(to: place) } label: {
                             HStack(spacing: Spacing.sm) {
@@ -424,7 +423,7 @@ struct MapTabView: View {
     /// Focuses the map on `item`, routes to it, and files it under Recents.
     private func setDestination(_ item: MKMapItem) {
         destination = item
-        withAnimation { cameraPosition = .region(regionFraming(item)) }
+        withAnimation(reduceMotion ? nil : .snappy) { cameraPosition = .region(regionFraming(item)) }
         computeRoute(to: item)
         addRecent(item)
     }
@@ -536,7 +535,7 @@ struct MapTabView: View {
         query = ""
         destination = nil
         route = nil
-        withAnimation { cameraPosition = .userLocation(fallback: .automatic) }
+        withAnimation(reduceMotion ? nil : .snappy) { cameraPosition = .userLocation(fallback: .automatic) }
     }
 
     private func openInMaps(_ item: MKMapItem) {

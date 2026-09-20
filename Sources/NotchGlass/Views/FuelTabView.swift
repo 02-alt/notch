@@ -40,6 +40,18 @@ struct FuelTabView: View {
     /// A held reading during a recoverable outage (rate-limit / brief offline).
     private var isStale: Bool { s.hasReading && s.status != .live }
 
+    /// A healthy, live session — earns the soft Siri multicolour glow. A low or warning
+    /// level keeps its semantic colour instead so the status stays unmistakable.
+    private var sessionActive: Bool { hasLive && showsGauge && remaining >= 0.35 }
+
+    /// The soft Apple-Intelligence multicolour used for a healthy, live session bar.
+    static let siriFuelGradient = LinearGradient(
+        colors: [Color(red: 0.36, green: 0.80, blue: 0.82),
+                 Color(red: 0.40, green: 0.60, blue: 0.98),
+                 Color(red: 0.70, green: 0.45, blue: 0.98),
+                 Color(red: 0.98, green: 0.45, blue: 0.72)],
+        startPoint: .leading, endPoint: .trailing)
+
     /// Fill color for the level: white normally, warming as the tank runs low.
     private var levelColor: Color {
         guard showsGauge else { return .white.opacity(0.5) }
@@ -115,51 +127,42 @@ struct FuelTabView: View {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text("Session fuel")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(.white)
                     Text(riskLabel)
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(levelColor.opacity(hasLive ? 0.95 : 0.6))
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(levelColor.opacity(hasLive ? 1 : 0.75))
                 }
                 Spacer()
                 if showsGauge {
                     HStack(alignment: .firstTextBaseline, spacing: Spacing.xs) {
                         Text("\(Int((remaining * 100).rounded()))")
-                            .font(.system(size: 26, weight: .bold, design: .rounded).monospacedDigit())
+                            .font(.system(size: 40, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundStyle(.white)
                             .contentTransition(.numericText(value: (remaining * 100).rounded()))
                             .animation(.snappy(duration: 0.4), value: remaining)
-                        Text("% left")
-                            .font(.system(size: 11, weight: .semibold))
+                        Text("%")
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(Theme.secondaryText)
                     }
                     .opacity(isStale ? 0.85 : 1)
                 }
             }
 
-            VStack(spacing: Spacing.sm) {
-                HStack {
-                    Text("0%")
-                    Spacer()
-                    Text("50%")
-                    Spacer()
-                    Text("100%")
-                }
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .foregroundStyle(Theme.tertiaryText)
-
-                BarMeter(fraction: remaining, barCount: 54, fill: levelColor, showMarker: showsGauge)
-                    .frame(height: 52)
-                    .opacity(isStale ? 0.9 : 1)
-            }
+            // One continuous, glowing progress bar — the single hero indicator for the
+            // session. A healthy, live session gets the soft Siri multicolour fill; a low
+            // or stale reading keeps the semantic warning colour so the status still reads.
+            GlowBar(fraction: remaining,
+                    fill: sessionActive ? AnyShapeStyle(Self.siriFuelGradient) : AnyShapeStyle(levelColor),
+                    glow: sessionActive ? Color(red: 0.55, green: 0.50, blue: 0.96) : levelColor,
+                    height: 14)
+                .opacity(isStale ? 0.9 : 1)
         }
         .padding(Spacing.lg)
         .frame(maxWidth: .infinity)
         .background {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.black.opacity(0.55))
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(HUD.cardFill)
         }
         .overlay {
             // Only veil the whole gauge when there's nothing to show. If we're
@@ -288,62 +291,43 @@ struct FuelTabView: View {
         .gesture(dragGesture(for: block))
     }
 
-    /// A large featured "instrument cluster" for any non-session block: a light widget
-    /// holding a black identity tile, a tick-dial gauge with a needle, and a wide accent
-    /// strip carrying the headline value in bold digits.
+    /// The large featured card for any non-session block. Unified with the session hero:
+    /// a borderless dark surface with an icon + title, the headline value in big
+    /// high-contrast digits, and the same continuous `GlowBar` every other metric uses —
+    /// so the whole dashboard reads as one system instead of a separate instrument style.
     private func genericBigCard(_ block: FuelBlock, now: Date) -> some View {
         let r = readout(for: block, now: now)
-        let cream = Color(red: 0.91, green: 0.90, blue: 0.87)
-        let coral = Color(red: 0.93, green: 0.44, blue: 0.34)
-        return VStack(spacing: Spacing.md) {
-            HStack(spacing: Spacing.md) {
-                // Identity tile — icon over the block's name, "Sat 09" style.
-                VStack(alignment: .leading, spacing: Spacing.s) {
-                    Image(systemName: block.symbol)
-                        .font(.system(size: 18, weight: .bold))
-                    Spacer(minLength: 0)
-                    Text(block.title)
-                        .font(.system(size: 15, weight: .heavy))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.7)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .padding(Spacing.base)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.black))
-
-                // Instrument dial — ticks around the rim, a needle at the current level.
-                DialGauge(fraction: r.fraction)
-                    .frame(maxHeight: .infinity)
-                    .padding(Spacing.base)
-                    .frame(width: 104)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.black))
-            }
-            .frame(height: 80)
-
-            // Headline strip — the big value, black digits on the accent.
-            HStack(alignment: .firstTextBaseline, spacing: Spacing.s) {
+        return VStack(alignment: .leading, spacing: Spacing.base) {
+            HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+                Image(systemName: block.symbol)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(r.fill)
+                Text(block.title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                Spacer(minLength: Spacing.sm)
                 Text(r.bigNumber)
-                    .font(.system(size: 30, weight: .heavy, design: .rounded).monospacedDigit())
+                    .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.4)
                     .contentTransition(.numericText())
                     .animation(.snappy(duration: 0.4), value: r.bigNumber)
                 if !r.bigUnit.isEmpty {
                     Text(r.bigUnit)
-                        .font(.system(size: 13, weight: .bold))
-                        .opacity(0.7)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.secondaryText)
                 }
             }
-            .foregroundStyle(.black)
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(coral))
+            GlowBar(fraction: r.fraction, fill: AnyShapeStyle(r.fill), glow: r.fill, height: 12)
         }
-        .padding(Spacing.md)
+        .padding(Spacing.lg)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(cream))
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(HUD.cardFill)
+        }
     }
 
     // MARK: Small grid
@@ -727,15 +711,13 @@ private extension View {
     func fuelCardChrome() -> some View {
         self
             .frame(maxWidth: .infinity)
-            .frame(height: 90)
+            // Taller for a comfortable tap/drag target; borderless to match the hero.
+            .frame(height: 100)
             .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.white.opacity(0.05))
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(HUD.cardFill)
             }
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-            }
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -744,41 +726,11 @@ private struct BlockLabel: View {
     let text: String
     var body: some View {
         Text(text)
-            .font(.system(size: 10.5, weight: .semibold))
-            .foregroundStyle(Theme.secondaryText)
+            // Bumped weight + brightness for higher contrast against the dark card.
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(.white.opacity(0.85))
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-    }
-}
-
-/// An instrument dial: tick marks around the rim (every 6th longer) with an arrow
-/// needle pointing to `fraction` of a full turn. Purely presentational.
-private struct DialGauge: View {
-    let fraction: Double
-    var tint: Color = .white
-
-    var body: some View {
-        GeometryReader { geo in
-            let side = min(geo.size.width, geo.size.height)
-            let radius = side / 2
-            ZStack {
-                ForEach(0..<24, id: \.self) { i in
-                    Capsule()
-                        .fill(tint.opacity(i % 6 == 0 ? 1 : 0.5))
-                        .frame(width: 1.6, height: i % 6 == 0 ? 8 : 5)
-                        .offset(y: -(radius - 5))
-                        .rotationEffect(.degrees(Double(i) / 24 * 360))
-                }
-                Image(systemName: "arrow.up")
-                    .font(.system(size: side * 0.42, weight: .bold))
-                    .foregroundStyle(tint)
-                    .offset(y: -side * 0.12)
-                    .rotationEffect(.degrees(min(1, max(0, fraction)) * 360))
-            }
-            .frame(width: side, height: side)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .aspectRatio(1, contentMode: .fit)
     }
 }
 
@@ -826,8 +778,7 @@ private struct HeroStat: View {
                 }
             }
             if showMeter {
-                BarMeter(fraction: fraction, barCount: 22, fill: fill, showMarker: fraction > 0)
-                    .frame(height: 5)
+                GlowBar(fraction: fraction, fill: AnyShapeStyle(fill), glow: fill, height: 6)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -890,40 +841,5 @@ private struct AddBlockCard: View {
     }
 }
 
-/// A segmented level bar: `fraction` of the ticks are lit; a hairline marker sits
-/// at the current level. Purely presentational.
-private struct BarMeter: View {
-    let fraction: Double
-    var barCount: Int = 48
-    var fill: Color = .white
-    var showMarker: Bool = true
+// GlowBar now lives in HUDKit (shared across the app).
 
-    /// The "off" segments read as visible dark-gray LEDs (like the reference matrix),
-    /// not a near-black tint of the fill — a dim amber fill at low opacity would
-    /// otherwise vanish against the black card.
-    private var offColor: Color { Color.white.opacity(0.24) }
-
-    var body: some View {
-        GeometryReader { geo in
-            let f = min(1, max(0, fraction))
-            let lit = Int((Double(barCount) * f).rounded())
-            ZStack(alignment: .leading) {
-                HStack(spacing: max(1, geo.size.width / Double(barCount) * 0.35)) {
-                    ForEach(0..<barCount, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: 1, style: .continuous)
-                            .fill(i < lit ? fill : offColor)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
-                }
-                if showMarker {
-                    Rectangle()
-                        .fill(fill)
-                        .frame(width: 1.5)
-                        .frame(maxHeight: .infinity)
-                        .offset(x: max(0, min(geo.size.width - 1.5, geo.size.width * f - 0.75)))
-                        .shadow(color: fill.opacity(0.6), radius: 3)
-                }
-            }
-        }
-    }
-}

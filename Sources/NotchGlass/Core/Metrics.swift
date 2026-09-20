@@ -92,7 +92,7 @@ enum Metrics {
     /// countdown ring plus its preset grid want more vertical room than the
     /// standard `openHeight`. Kept below `moodExpandedHeight` so the fixed window
     /// never has to grow to hold it.
-    static let clockHeight: CGFloat = 340
+    static let clockHeight: CGFloat = 410
 
     /// Taller body for the Weather tab. The forecast face is a bento board of city
     /// blocks that resize up to 3 wide and **2 tall**, so the body must clear two

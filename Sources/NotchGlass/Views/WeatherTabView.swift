@@ -98,14 +98,14 @@ struct WeatherTabView: View {
         HStack(spacing: Spacing.s) {
             ForEach(WeatherMode.allCases) { m in
                 let on = mode == m
-                Button { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { mode = m } } label: {
+                Button { withAnimation(Metrics.openSpring) { mode = m } } label: {
                     HStack(spacing: Spacing.s) {
-                        Image(systemName: m.symbol).font(.system(size: 10, weight: .semibold))
-                        Text(m.title).font(.system(size: 11, weight: .semibold))
+                        Image(systemName: m.symbol).font(.system(size: 11, weight: .bold))
+                        Text(m.title).font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundStyle(on ? settings.accent.readableForeground : Theme.secondaryText)
                     .padding(.horizontal, Spacing.base)
-                    .frame(height: 24)
+                    .frame(height: 30)
                     .background {
                         Capsule(style: .continuous)
                             .fill(on ? settings.accent : Color.white.opacity(0.08))
@@ -132,7 +132,7 @@ struct WeatherTabView: View {
             VStack(spacing: Spacing.md) {
                 ThinkingOrb(size: 28)
                 Text("Finding your location…")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -153,16 +153,10 @@ struct WeatherTabView: View {
             }
             Spacer(minLength: 0)
             unitToggle
-            Button { refreshNonce += 1; Task { await refresh(force: true) } } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 26, height: 26)
-                    .background { Circle().fill(Color.white.opacity(0.10)) }
+            HUDIconButton(symbol: "arrow.clockwise", help: "Refresh") {
+                refreshNonce += 1
+                Task { await refresh(force: true) }
             }
-            .buttonStyle(.plain)
-            .notchHover(scale: 1.08)
-            .help("Refresh")
         }
     }
 
@@ -174,7 +168,7 @@ struct WeatherTabView: View {
                     Text(f ? "°F" : "°C")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(on ? settings.accent.readableForeground : Theme.secondaryText)
-                        .frame(width: 28, height: 22)
+                        .frame(width: 30, height: 28)
                         .background {
                             Capsule(style: .continuous)
                                 .fill(on ? settings.accent : Color.clear)
@@ -194,7 +188,7 @@ struct WeatherTabView: View {
         VStack(spacing: Spacing.md) {
             ThinkingOrb(size: 30)
             Text(location.location == nil ? "Finding your location…" : "Loading the forecast…")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Theme.secondaryText)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -206,17 +200,18 @@ struct WeatherTabView: View {
                 .font(.system(size: 28, weight: .light))
                 .foregroundStyle(Theme.tertiaryText)
             Text(weather.errorText ?? "Couldn't load the weather.")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 280)
             Button { Task { await refresh(force: true) } } label: {
                 Text("Try Again")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(settings.accent.readableForeground)
-                    .padding(.horizontal, Spacing.lg)
-                    .frame(height: 30)
+                    .padding(.horizontal, Spacing.xl)
+                    .frame(height: 44)
                     .background { Capsule().fill(settings.accent) }
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .notchHover(scale: 1.05)
@@ -232,17 +227,18 @@ struct WeatherTabView: View {
             Text("Location access is off")
                 .font(.system(size: 15, weight: .bold))
             Text("Turn it on in System Settings → Privacy & Security → Location Services to see your local weather.")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 300)
             Button { Self.openLocationSettings() } label: {
                 Text("Open Settings")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(settings.accent.readableForeground)
-                    .padding(.horizontal, Spacing.lg)
-                    .frame(height: 32)
+                    .padding(.horizontal, Spacing.xl)
+                    .frame(height: 44)
                     .background { Capsule().fill(settings.accent) }
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .notchHover(scale: 1.05)

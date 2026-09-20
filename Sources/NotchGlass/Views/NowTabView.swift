@@ -12,14 +12,18 @@ struct NowTabView: View {
     @StateObject private var monitor = SystemMonitor()
 
     var body: some View {
-        VStack(spacing: Spacing.base) {
+        VStack(alignment: .leading, spacing: Spacing.base) {
+            HUDSectionHeader("SYSTEM")
+
+            // CPU leads as the hero vital: larger surface, bigger readout.
             VitalRow(title: "CPU",
                      symbol: "cpu",
                      accent: settings.accent,
                      value: monitor.cpuPercentText,
                      detail: monitor.cpuDetail,
                      fraction: monitor.cpuFraction,
-                     history: monitor.cpuHistory)
+                     history: monitor.cpuHistory,
+                     hero: true)
             VitalRow(title: "Memory",
                      symbol: "memorychip",
                      accent: settings.accent,
@@ -45,23 +49,28 @@ struct NowTabView: View {
 // MARK: - One vital block
 
 /// A single vital: an icon + label + hero value on the left, a sparkline of recent
-/// history filling the right, and a thin baseline meter of the current fraction.
+/// history filling the right, and a `GlowBar` of the current level below. The lead
+/// vital passes `hero: true` for the larger surface, readout and chart.
 private struct VitalRow: View {
     let title: String
     let symbol: String
     let accent: Color
     let value: String
     let detail: String
-    /// Current level, 0…1, for the baseline meter.
+    /// Current level, 0…1, for the level bar.
     let fraction: Double
     /// Recent samples, each 0…1, oldest first — drives the sparkline.
     let history: [Double]
+    /// The featured vital gets the hero card radius, a bigger readout and a taller chart.
+    var hero: Bool = false
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.sm) {
+        VStack(alignment: .leading, spacing: Spacing.base) {
             HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
                 Image(systemName: symbol)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: hero ? 14 : 12, weight: .bold))
                     .foregroundStyle(accent)
                 Text(title)
                     .font(.system(size: 11, weight: .bold))
@@ -69,36 +78,29 @@ private struct VitalRow: View {
                     .kerning(0.5)
                 Spacer(minLength: Spacing.sm)
                 Text(value)
-                    .font(.system(size: 22, weight: .semibold).monospacedDigit())
+                    .font(.system(size: hero ? 34 : 24, weight: .bold).monospacedDigit())
                     .foregroundStyle(Theme.primaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
+                    .contentTransition(.numericText())
+                    .animation(reduceMotion ? nil : .snappy(duration: 0.4), value: value)
             }
 
             Sparkline(samples: history, accent: accent)
-                .frame(height: 34)
+                .frame(height: hero ? 46 : 34)
 
-            HStack(spacing: Spacing.sm) {
-                Capsule()
-                    .fill(Theme.line(0.12))
-                    .frame(height: 3)
-                    .overlay(alignment: .leading) {
-                        GeometryReader { geo in
-                            Capsule()
-                                .fill(accent)
-                                .frame(width: geo.size.width * min(max(fraction, 0), 1))
-                        }
-                    }
+            // Instantaneous level in the app's one continuous indicator; the reading
+            // sits alongside it in high-contrast digits.
+            HStack(spacing: Spacing.base) {
+                GlowBar(fraction: fraction, color: accent, height: hero ? 8 : 6)
                 Text(detail)
-                    .font(.system(size: 10, weight: .medium).monospacedDigit())
-                    .foregroundStyle(Theme.tertiaryText)
+                    .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(Theme.secondaryText)
                     .lineLimit(1)
                     .fixedSize()
             }
         }
-        .padding(.horizontal, Spacing.base)
-        .padding(.vertical, Spacing.sm)
-        .innerCard(cornerRadius: 14)
+        .hudCard(hero: hero)
     }
 }
 
@@ -122,16 +124,17 @@ private struct Sparkline: View {
                         p.addLine(to: CGPoint(x: pts[pts.count - 1].x, y: geo.size.height))
                         p.closeSubpath()
                     }
-                    .fill(LinearGradient(colors: [accent.opacity(0.28), accent.opacity(0.02)],
+                    .fill(LinearGradient(colors: [accent.opacity(0.32), accent.opacity(0.03)],
                                          startPoint: .top, endPoint: .bottom))
                     Path { p in
                         p.move(to: pts[0])
                         for pt in pts.dropFirst() { p.addLine(to: pt) }
                     }
-                    .stroke(accent, style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round))
+                    .stroke(accent, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                     if let last = pts.last {
                         Circle().fill(accent)
-                            .frame(width: 4, height: 4)
+                            .frame(width: 5, height: 5)
+                            .shadow(color: accent.opacity(0.6), radius: 3)
                             .position(last)
                     }
                 } else {

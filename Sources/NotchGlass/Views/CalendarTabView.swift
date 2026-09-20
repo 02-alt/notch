@@ -24,6 +24,7 @@ struct CalendarTabView: View {
     @State private var draft = ""
     @State private var showingAdd = false
     @FocusState private var addFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
@@ -46,9 +47,17 @@ struct CalendarTabView: View {
         VStack(alignment: .leading, spacing: Spacing.base) {
             header
             monthGrid
-            if showingAdd { quickAddBar }
+            if showingAdd {
+                quickAddBar
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
             selectedDaySection
         }
+        // One consistent motion for month paging, day selection and the quick-add
+        // reveal — honoring Reduce Motion.
+        .animation(reduceMotion ? nil : .snappy(duration: 0.4), value: manager.visibleMonth)
+        .animation(reduceMotion ? nil : .snappy(duration: 0.4), value: manager.selectedDay)
+        .animation(reduceMotion ? nil : Metrics.openSpring, value: showingAdd)
     }
 
     // MARK: - Month grid
@@ -61,10 +70,15 @@ struct CalendarTabView: View {
         VStack(spacing: Spacing.sm) {
             HStack(spacing: Spacing.sm) {
                 Text(Self.monthTitle.string(from: manager.visibleMonth))
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Theme.primaryText)
                 Spacer(minLength: 0)
-                monthArrow("chevron.left", "Previous month") { manager.changeMonth(by: -1) }
-                monthArrow("chevron.right", "Next month") { manager.changeMonth(by: 1) }
+                HUDIconButton(symbol: "chevron.left", help: "Previous month") { manager.changeMonth(by: -1) }
+                    .accessibilityLabel("Previous month")
+                HUDIconButton(symbol: "chevron.right", help: "Next month") { manager.changeMonth(by: 1) }
+                    .accessibilityLabel("Next month")
+                // The add affordance keeps its accent fill so it reads as the tab's
+                // one primary action, still on a ≥28pt round target.
                 Button {
                     showingAdd.toggle()
                     if showingAdd { addFocused = true }
@@ -72,8 +86,9 @@ struct CalendarTabView: View {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(settings.accent.readableForeground)
-                        .frame(width: 26, height: 26)
+                        .frame(width: 28, height: 28)
                         .background { Circle().fill(settings.accent) }
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .notchHover(scale: 1.08)
@@ -83,8 +98,8 @@ struct CalendarTabView: View {
             HStack(spacing: 0) {
                 ForEach(Array(Self.weekdaySymbols.enumerated()), id: \.offset) { _, symbol in
                     Text(symbol)
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(Theme.tertiaryText)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Theme.secondaryText)
                         .frame(maxWidth: .infinity)
                         .accessibilityHidden(true)
                 }
@@ -96,22 +111,7 @@ struct CalendarTabView: View {
                 }
             }
         }
-        .padding(Spacing.md)
-        .innerCard(cornerRadius: 12)
-    }
-
-    private func monthArrow(_ icon: String, _ label: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 26, height: 26)
-                .background { Circle().fill(Theme.line(0.10)) }
-        }
-        .buttonStyle(.plain)
-        .notchHover(scale: 1.08)
-        .accessibilityLabel(label)
-        .help(label)
+        .hudCard(padding: Spacing.base)
     }
 
     private func dayCell(_ day: Date) -> some View {
@@ -120,26 +120,31 @@ struct CalendarTabView: View {
         let isSelected = cal.isDate(day, inSameDayAs: manager.selectedDay)
         let isToday = cal.isDateInToday(day)
         let hasEvents = manager.hasEvents(on: day)
+        // High-contrast day text: full white in-month, bold for today/selected so the
+        // key days stand out against the accent fill/ring.
+        let dayColor: Color = isSelected ? .white : (inMonth ? Theme.primaryText : Theme.tertiaryText)
+        let dayWeight: Font.Weight = (isToday || isSelected) ? .bold : .medium
         return Button { manager.select(day) } label: {
             VStack(spacing: 1) {
                 Text("\(cal.component(.day, from: day))")
-                    .font(.system(size: 11, weight: isToday ? .bold : .medium).monospacedDigit())
-                    .foregroundStyle(inMonth ? .white : Theme.tertiaryText)
+                    .font(.system(size: 12, weight: dayWeight).monospacedDigit())
+                    .foregroundStyle(dayColor)
                 Circle()
                     .fill(hasEvents ? settings.accent : .clear)
                     .frame(width: 4, height: 4)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 30)
+            .frame(height: 34)
             .background {
                 if isSelected {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous).fill(settings.accent.opacity(0.30))
+                    RoundedRectangle(cornerRadius: HUD.chipRadius, style: .continuous)
+                        .fill(settings.accent.opacity(0.30))
                 }
             }
             .overlay {
                 if isToday {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .strokeBorder(settings.accent, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: HUD.chipRadius, style: .continuous)
+                        .strokeBorder(settings.accent, lineWidth: 1.5)
                 }
             }
             .contentShape(Rectangle())
@@ -163,7 +168,7 @@ struct CalendarTabView: View {
             TextField("Add event — e.g. “Lunch tomorrow 1pm”", text: $draft)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.primaryText)
                 .tint(settings.accent)
                 .focused($addFocused)
                 .onSubmit(commitAdd)
@@ -172,15 +177,14 @@ struct CalendarTabView: View {
                 .buttonStyle(.plain)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(settings.accent.readableForeground)
-                .padding(.horizontal, Spacing.md)
-                .frame(height: 26)
+                .padding(.horizontal, Spacing.base)
+                .frame(height: 30)
                 .background { Capsule().fill(settings.accent) }
+                .contentShape(Capsule())
                 .notchHover(scale: 1.05)
                 .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
         }
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.sm)
-        .innerCard(cornerRadius: 10)
+        .hudCard(padding: Spacing.md)
     }
 
     private func commitAdd() {
@@ -197,10 +201,8 @@ struct CalendarTabView: View {
     private var selectedDaySection: some View {
         let events = manager.events(on: manager.selectedDay)
         return VStack(alignment: .leading, spacing: Spacing.s) {
-            Text(Self.dayHeading(manager.selectedDay))
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Theme.tertiaryText)
-                .kerning(0.5)
+            HUDSectionHeader(Self.dayHeading(manager.selectedDay),
+                             trailingText: events.isEmpty ? nil : "\(events.count)")
             if events.isEmpty {
                 emptyDay
             } else {
@@ -239,9 +241,9 @@ struct CalendarTabView: View {
             let now = context.date
             let next = manager.nextEvent(after: now)
             HStack(alignment: .center, spacing: Spacing.base) {
-                VStack(alignment: .leading, spacing: Spacing.hair) {
+                VStack(alignment: .leading, spacing: Spacing.xs) {
                     Text(Self.heroLabel(next, now))
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(Theme.secondaryText)
                         .kerning(0.6)
                     if let next {
@@ -250,7 +252,8 @@ struct CalendarTabView: View {
                                 .fill(color(for: next))
                                 .frame(width: 8, height: 8)
                             Text(next.title ?? "Event")
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(Theme.primaryText)
                                 .lineLimit(1)
                             Text(Self.heroCountdown(next, now))
                                 .font(.system(size: 12, weight: .semibold))
@@ -261,7 +264,8 @@ struct CalendarTabView: View {
                         }
                     } else {
                         Text("Nothing coming up")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(Theme.primaryText)
                     }
                 }
                 .accessibilityElement(children: .combine)
@@ -269,18 +273,12 @@ struct CalendarTabView: View {
                 if let next, let url = next.meetingURL {
                     joinButton(url, title: next.title, compact: false)
                 }
-                Button { Self.openCalendarApp() } label: {
-                    Image(systemName: "arrow.up.forward.app")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 30, height: 30)
-                        .background { Circle().fill(Theme.line(0.10)) }
+                HUDIconButton(symbol: "arrow.up.forward.app", help: "Open Calendar") {
+                    Self.openCalendarApp()
                 }
-                .buttonStyle(.plain)
-                .notchHover(scale: 1.08)
                 .accessibilityLabel("Open Calendar")
-                .help("Open Calendar")
             }
+            .hudCard(hero: true)
         }
     }
 
@@ -303,11 +301,12 @@ struct CalendarTabView: View {
                     VStack(alignment: .leading, spacing: Spacing.hair) {
                         Text(event.title ?? "Event")
                             .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.primaryText)
                             .lineLimit(1)
                         if let loc = event.location, !loc.isEmpty {
                             Label(loc, systemImage: "mappin.and.ellipse")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(Theme.tertiaryText)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(Theme.secondaryText)
                                 .lineLimit(1)
                         }
                     }
@@ -324,11 +323,9 @@ struct CalendarTabView: View {
                 joinButton(url, title: event.title, compact: true)
             }
         }
-        .padding(.horizontal, Spacing.md)
-        .padding(.vertical, Spacing.sm)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 44)
         .fixedSize(horizontal: false, vertical: true)
-        .innerCard(cornerRadius: 10)
+        .hudCard(padding: Spacing.md)
         .notchHover(scale: 1.01)
     }
 
@@ -420,11 +417,12 @@ struct CalendarTabView: View {
                 .frame(maxWidth: 300)
             Button(action: action) {
                 Text(button)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(settings.accent.readableForeground)
                     .padding(.horizontal, Spacing.lg)
-                    .frame(height: 32)
+                    .frame(height: 44)
                     .background { Capsule().fill(settings.accent) }
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .notchHover(scale: 1.05)
